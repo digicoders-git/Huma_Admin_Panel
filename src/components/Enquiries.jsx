@@ -1,243 +1,379 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  ClipboardList, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  User, 
-  MessageSquare,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  ChevronRight
+  Search, Trash2, Mail, Phone, Calendar, User, MessageSquare,
+  CheckCircle2, Clock, ChevronRight, RefreshCw, Square, CheckSquare, X
 } from 'lucide-react';
 
-const enquiriesData = [
-  {
-    id: 1,
-    name: 'Rahul Sharma',
-    email: 'rahul.s@example.com',
-    phone: '+91 98765 43210',
-    subject: 'Appointment for Neurology',
-    date: '12 Oct 2025',
-    status: 'Pending',
-    message: 'Hello, I would like to book an appointment with Dr. Nina Alvarez for my chronic migraine issues. Please let me know the availability.',
-  },
-  {
-    id: 2,
-    name: 'Priya Patel',
-    email: 'priya.p@example.com',
-    phone: '+91 99887 76655',
-    subject: 'Health Insurance Inquiry',
-    date: '11 Oct 2025',
-    status: 'In Progress',
-    message: 'I want to know if you accept Star Health Insurance for surgical procedures. Waiting for your response.',
-  },
-  {
-    id: 3,
-    name: 'Amit Verma',
-    email: 'amit.v@example.com',
-    phone: '+91 91234 56789',
-    subject: 'Surgery Cost Estimation',
-    date: '10 Oct 2025',
-    status: 'Resolved',
-    message: 'Looking for a cost estimation for Knee Replacement surgery. Please provide a rough breakdown.',
-  },
-  {
-    id: 4,
-    name: 'Sneha Gupta',
-    email: 'sneha.g@example.com',
-    phone: '+91 88776 65544',
-    subject: 'Second Opinion for Cardiology',
-    date: '09 Oct 2025',
-    status: 'Pending',
-    message: 'I have my reports from another hospital and I want a second opinion from your cardiologists.',
-  }
-];
-
 const Enquiries = () => {
+  const [enquiries, setEnquiries] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+  
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [filterStatus, setFilterStatus] = useState('All');
+  
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, mode: 'single', id: null });
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Resolved': return 'bg-primary-light text-primary';
-      case 'In Progress': return 'bg-blue-50 text-blue-600';
-      case 'Pending': return 'bg-amber-50 text-amber-600';
-      default: return 'bg-gray-50 text-gray-500';
+  const fetchEnquiries = async () => {
+    try {
+      setLoading(true);
+      const url = new URL(`${import.meta.env.VITE_API_BASE_URL}/enquiry/all`);
+      if (searchQuery) url.searchParams.append('search', searchQuery);
+      if (filterStatus !== 'All') url.searchParams.append('status', filterStatus);
+
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      if (data.success) {
+        setEnquiries(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching enquiries:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchEnquiries();
+  }, [searchQuery, filterStatus]);
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/enquiry/status/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if ((await res.json()).success) {
+         if (selectedEnquiry && selectedEnquiry._id === id) {
+             setSelectedEnquiry(prev => ({...prev, status: newStatus}));
+         }
+         fetchEnquiries();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const confirmDelete = async () => {
+    const { mode, id } = deleteConfirm;
+    
+    if (mode === 'single') {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/enquiry/delete/${id}`, { method: 'DELETE' });
+        if ((await res.json()).success) {
+            setSelectedEnquiry(null);
+            fetchEnquiries();
+            setDeleteConfirm({ show: false, mode: 'single', id: null });
+        }
+      } catch (error) { console.error(error); }
+    } else {
+      // Bulk Delete
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/enquiry/bulk-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds })
+        });
+        if ((await res.json()).success) {
+          setSelectedIds([]);
+          fetchEnquiries();
+          setDeleteConfirm({ show: false, mode: 'single', id: null });
+        }
+      } catch (error) { console.error(error); }
+    }
+  };
+
+  const deleteEnquiry = (id) => {
+    setDeleteConfirm({ show: true, mode: 'single', id });
+  };
+
+  const bulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setDeleteConfirm({ show: true, mode: 'bulk', id: null });
+  };
+
+
+  const bulkUpdateStatus = async (newStatus) => {
+    if (selectedIds.length === 0) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/enquiry/bulk-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds, status: newStatus })
+      });
+      if ((await res.json()).success) {
+        setSelectedIds([]);
+        fetchEnquiries();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const toggleSelection = (id) => {
+     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+  
+  const toggleAll = () => {
+     if (selectedIds.length === enquiries.length) {
+         setSelectedIds([]);
+     } else {
+         setSelectedIds(enquiries.map(e => e._id));
+     }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'resolved': return 'bg-primary-light text-primary border border-primary/10';
+      case 'contacted': return 'bg-blue-50 text-blue-600 border border-blue-100';
+      case 'pending': return 'bg-amber-50 text-amber-600 border border-amber-100';
+      default: return 'bg-gray-50 text-gray-500 border border-gray-100';
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return {
+       month: d.toLocaleString('default', { month: 'short' }),
+       day: d.getDate(),
+       full: d.toLocaleDateString()
+    };
+  };
+
   return (
-    <div className="px-6 py-4 flex flex-col gap-6 max-w-[1200px] mx-auto animate-fade-in relative">
+    <div className="px-4 md:px-8 pb-12 max-w-[1600px] mx-auto animate-in fade-in duration-500">
       
-      {/* Enquiry Detail Modal */}
-      {selectedEnquiry && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 max-h-[95vh] flex flex-col">
-             
-             {/* Modal Header */}
-             <div className="px-6 sm:px-10 py-6 sm:py-8 bg-primary text-white flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-black">Enquiry Details</h3>
-                  <p className="text-[10px] opacity-80 font-bold mt-1 uppercase tracking-widest leading-none">Received on {selectedEnquiry.date}</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedEnquiry(null)} 
-                  className="bg-white/20 p-2.5 rounded-2xl hover:bg-white/30 transition-all active:scale-90"
-                >
-                  <MessageSquare size={24} />
-                </button>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Manage Enquiries</h2>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Patient Leads & Comms</p>
+        </div>
+        <button onClick={fetchEnquiries} className="flex items-center gap-2 bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-primary hover:border-primary/20 hover:bg-primary-light/50 px-4 py-2.5 rounded-xl font-bold text-xs transition-all">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh Data
+        </button>
+      </div>
+
+      {/* Global Card Container (Doctor Style) */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        
+        {/* Top Action Bar */}
+        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+             <div className="relative w-full md:w-80">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+               <input 
+                 type="text" 
+                 placeholder="Search names, phone, email..."
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-primary/10 outline-none transition-all shadow-sm"
+               />
              </div>
+             <select 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="bg-white border border-gray-100 shadow-sm px-4 py-2.5 rounded-xl text-sm font-bold text-gray-600 outline-none cursor-pointer hidden sm:block"
+             >
+                <option value="All">All Leads</option>
+                <option value="pending">Pending</option>
+                <option value="contacted">Contacted</option>
+                <option value="resolved">Resolved</option>
+             </select>
+          </div>
 
-             {/* Modal Content */}
-             <div className="p-6 sm:p-10 space-y-6 sm:space-y-8 overflow-y-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
-                   <div className="space-y-2">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">PATIENT NAME</p>
-                      <div className="flex items-center gap-3 text-[13px] font-black text-gray-900 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                         <div className="w-8 h-8 rounded-xl bg-primary-light flex items-center justify-center text-primary">
-                           <User size={16} />
+          <div className="flex items-center gap-4 w-full md:w-auto">
+             {enquiries.length > 0 && (
+                <button onClick={toggleAll} className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-primary transition-colors">
+                   {selectedIds.length === enquiries.length ? <CheckSquare size={16} className="text-primary"/> : <Square size={16} />}
+                   <span>Select All</span>
+                </button>
+             )}
+             {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2 animate-in slide-in-from-right-4 duration-300">
+                  <button onClick={() => bulkUpdateStatus('resolved')} className="px-3 py-2 bg-primary-light text-primary border border-primary/20 text-xs font-bold rounded-lg hover:bg-primary hover:text-white transition-all whitespace-nowrap">
+                     Mark Resolved
+                  </button>
+                  <button onClick={bulkDelete} className="p-2 bg-red-50 text-red-500 border border-red-100 rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                     <Trash2 size={16} />
+                  </button>
+                </div>
+             )}
+          </div>
+        </div>
+
+        {/* List View */}
+        {loading ? (
+          <p className="text-center py-20 text-gray-400 font-bold">Loading enquiries...</p>
+        ) : enquiries.length === 0 ? (
+          <div className="py-20 text-center flex flex-col items-center">
+             <MessageSquare size={32} className="text-gray-300 mb-3" />
+             <p className="text-gray-400 font-bold italic">No patient leads currently available.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {enquiries.map((item) => {
+              const dateInfo = formatDate(item.createdAt);
+              const isSelected = selectedIds.includes(item._id);
+
+              return (
+                <div 
+                  key={item._id} 
+                  className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all group hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-primary-light/30' : ''}`}
+                >
+                  <div className="flex items-center gap-4">
+                     <button onClick={(e) => { e.stopPropagation(); toggleSelection(item._id); }} className="text-gray-300 hover:text-primary shrink-0">
+                        {isSelected ? <CheckSquare size={18} className="text-primary" /> : <Square size={18} />}
+                     </button>
+
+                     <div onClick={() => setSelectedEnquiry(item)} className="w-12 h-12 shrink-0 bg-gray-100 rounded-xl flex flex-col items-center justify-center text-center group-hover:bg-white group-hover:shadow-sm transition-all border border-transparent group-hover:border-gray-200">
+                        <span className="text-[9px] font-black text-gray-400 uppercase leading-none mb-0.5">{dateInfo.month}</span>
+                        <span className="text-base font-black text-gray-700 leading-none">{dateInfo.day}</span>
+                     </div>
+                  </div>
+
+                  <div onClick={() => setSelectedEnquiry(item)} className="flex-1 grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                     {/* User Details */}
+                     <div className="sm:col-span-4">
+                        <h4 className="text-[14px] font-bold text-gray-900 mb-0.5 line-clamp-1">{item.name}</h4>
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-gray-500">
+                           <span className="flex items-center gap-1 leading-none"><Phone size={10} className="text-primary" /> {item.phone || 'No Phone'}</span>
+                        </div>
+                     </div>
+
+                     {/* Subject / Message */}
+                     <div className="sm:col-span-5">
+                        <p className="text-xs font-bold text-gray-700 line-clamp-1 mb-0.5">{item.treatment || 'General / Not Specified'}</p>
+                        <p className="text-[11px] font-medium text-gray-400 line-clamp-1">{item.message || 'No additional message.'}</p>
+                     </div>
+
+                     {/* Status & Options */}
+                     <div className="sm:col-span-3 flex items-center justify-between sm:justify-end gap-3">
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest ${getStatusColor(item.status)}`}>
+                          {item.status}
+                        </span>
+                        <ChevronRight size={16} className="text-gray-300 group-hover:text-primary transition-colors hidden sm:block" />
+                     </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Simplified Detail Modal (Doctor Modal Style) */}
+      {selectedEnquiry && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+             <div className="bg-primary p-6 text-white flex justify-between items-center">
+                <h3 className="text-lg font-bold italic uppercase tracking-tight">Lead Detail: {selectedEnquiry.name}</h3>
+                <button onClick={() => setSelectedEnquiry(null)} className="p-1 hover:bg-white/20 rounded-full transition-all"><X size={20} /></button>
+             </div>
+             
+             <div className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                   {/* Left Col */}
+                   <div className="space-y-4">
+                      <div>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact Info</p>
+                         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm font-semibold space-y-2">
+                             <div className="flex items-center gap-2"><Phone size={14} className="text-primary"/> {selectedEnquiry.phone || 'N/A'}</div>
+                             <div className="flex items-center gap-2"><Mail size={14} className="text-primary"/> {selectedEnquiry.email}</div>
                          </div>
-                         {selectedEnquiry.name}
+                      </div>
+                      <div>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Location</p>
+                         <div className="bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-100 text-sm font-semibold text-gray-700">
+                             {selectedEnquiry.country || 'Unknown'}
+                         </div>
                       </div>
                    </div>
-                   <div className="space-y-2">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">CONTACT INFO</p>
-                      <div className="flex items-center gap-3 text-[13px] font-black text-gray-900 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                         <div className="w-8 h-8 rounded-xl bg-primary-light flex items-center justify-center text-primary">
-                           <Phone size={16} />
+
+                   {/* Right Col */}
+                   <div className="space-y-4">
+                      <div>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Interested In</p>
+                         <div className="bg-primary-light/40 border border-primary/20 px-4 py-2.5 rounded-xl text-primary text-sm font-bold">
+                             {selectedEnquiry.treatment || 'General Query'}
                          </div>
-                         <span className="truncate">{selectedEnquiry.phone}</span>
+                      </div>
+                      <div>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Received On</p>
+                         <div className="bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-100 text-sm font-semibold text-gray-700">
+                             {formatDate(selectedEnquiry.createdAt).full}
+                         </div>
                       </div>
                    </div>
                 </div>
 
-                <div className="space-y-2">
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">SUBJECT</p>
-                   <div className="text-[13px] font-black text-primary bg-primary-light p-4 rounded-2xl border border-primary/20">
-                      {selectedEnquiry.subject}
+                <div className="mb-8">
+                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Message Describe</p>
+                   <div className="p-5 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-600 font-medium leading-relaxed min-h-[100px]">
+                      {selectedEnquiry.message || <span className="italic opacity-50">No message body.</span>}
                    </div>
                 </div>
 
-                <div className="space-y-2">
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">MESSAGE</p>
-                   <div className="text-[13px] font-medium text-gray-600 leading-relaxed bg-gray-50 p-5 sm:p-6 rounded-3xl border border-gray-100 shadow-sm">
-                      {selectedEnquiry.message}
+                {/* Footer Controls */}
+                <div className="pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                   <div className="flex items-center gap-2 w-full md:w-auto">
+                      <button onClick={() => updateStatus(selectedEnquiry._id, 'pending')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedEnquiry.status === 'pending' ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Pending</button>
+                      <button onClick={() => updateStatus(selectedEnquiry._id, 'contacted')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedEnquiry.status === 'contacted' ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Contacted</button>
+                      <button onClick={() => updateStatus(selectedEnquiry._id, 'resolved')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedEnquiry.status === 'resolved' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Resolved</button>
                    </div>
-                </div>
-
-                {/* Modal Footer (Inner) */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-100">
-                    <button className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
-                      MARK AS RESOLVED
-                    </button>
-                    <button className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-gray-900/10 hover:bg-gray-800 transition-all flex items-center justify-center gap-2 active:scale-95">
-                      <Mail size={18} /> SEND REPLY
-                    </button>
+                   <button onClick={() => deleteEnquiry(selectedEnquiry._id)} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-all">
+                      <Trash2 size={16} />
+                   </button>
                 </div>
              </div>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Patient Enquiries</h2>
-          <p className="text-xs text-gray-500 mt-1">Manage and respond to queries received from your website or mobile app.</p>
-        </div>
-        <div className="flex items-center gap-3">
-           <div className="bg-white px-4 py-2.5 rounded-2xl border border-gray-100 flex items-center gap-2 shadow-sm">
-              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-bold text-gray-600">2 New Today</span>
-           </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[
-          { label: 'Total Enquiries', value: '1,284', icon: MessageSquare, color: 'teal' },
-          { label: 'Waiting Action', value: '42', icon: Clock, color: 'amber' },
-          { label: 'Recently Resolved', value: '98', icon: CheckCircle2, color: 'blue' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
-             <div className={`p-4 rounded-2xl bg-${stat.color}-50 text-${stat.color}-600 shadow-sm`}>
-                <stat.icon size={22} />
-             </div>
-             <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
-                <h4 className="text-2xl font-black text-gray-900">{stat.value}</h4>
-             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Search & Filter */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Search by name, subject, or email..." 
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20 outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <button className="bg-gray-50 text-gray-500 px-6 py-3 rounded-2xl flex items-center gap-2 text-xs font-bold hover:bg-gray-100 transition-all">
-          <Filter size={16} /> Filter
-        </button>
-      </div>
-
-      {/* Enquiries Grid */}
-      <div className="grid grid-cols-1 gap-4">
-        {enquiriesData.map((item) => (
-          <div 
-            key={item.id} 
-            onClick={() => setSelectedEnquiry(item)}
-            className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center gap-6 cursor-pointer hover:shadow-lg transition-all hover:border-primary/20 group"
-          >
-             {/* Date Circle */}
-             <div className="w-16 h-16 bg-gray-50 rounded-2xl flex flex-col items-center justify-center text-center group-hover:bg-primary-light transition-colors">
-                <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">OCT</span>
-                <span className="text-xl font-black text-gray-700 leading-none">{item.date.split(' ')[0]}</span>
-             </div>
-
-             {/* User Info */}
-             <div className="flex-1 w-full md:w-auto">
-                <h4 className="text-[15px] font-extrabold text-gray-900 mb-1 group-hover:text-primary transition-colors">{item.name}</h4>
-                <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold text-gray-400">
-                   <div className="flex items-center gap-1"><Mail size={12} className="text-primary" /> {item.email}</div>
-                   <div className="flex items-center gap-1"><Phone size={12} className="text-primary" /> {item.phone}</div>
+      {/* ── DELETE CONFIRMATION MODAL ───────────────────────────────────── */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirm({ show: false, mode: 'single', id: null })}></div>
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl animate-in zoom-in duration-300">
+             <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mb-4">
+                   <Trash2 size={32} />
                 </div>
-             </div>
-
-             {/* Subject */}
-             <div className="flex-1 w-full md:w-auto">
-                <div className="px-5 py-2.5 bg-gray-50 rounded-2xl text-xs font-bold text-gray-700 border border-transparent group-hover:border-teal-100 group-hover:bg-white transition-all">
-                   {item.subject}
-                </div>
-             </div>
-
-             {/* Status & Action */}
-             <div className="flex items-center gap-4 self-end md:self-center">
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusColor(item.status)}`}>
-                  {item.status}
-                </span>
-                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-300 group-hover:text-primary group-hover:bg-primary-light transition-all">
-                   <ChevronRight size={20} />
+                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter italic">
+                  {deleteConfirm.mode === 'bulk' ? 'Delete Leads?' : 'Remove Lead?'}
+                </h3>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-2 mb-8 text-balance">
+                  {deleteConfirm.mode === 'bulk' 
+                    ? `Are you sure you want to delete ${selectedIds.length} selected patient enquiries permanently?`
+                    : 'Are you sure you want to delete this patient enquiry? This cannot be undone.'}
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4 w-full">
+                   <button 
+                    onClick={confirmDelete}
+                    className="py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95"
+                   >
+                      Confirm
+                   </button>
+                   <button 
+                    onClick={() => setDeleteConfirm({ show: false, mode: 'single', id: null })}
+                    className="py-3.5 bg-gray-50 text-gray-400 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition-all active:scale-95"
+                   >
+                      Cancel
+                   </button>
                 </div>
              </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
     </div>
   );
 };
 
 export default Enquiries;
+

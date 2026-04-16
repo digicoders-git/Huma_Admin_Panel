@@ -29,9 +29,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Local state for selected items (can be moved to props or context later)
-  const [selectedHospital, setSelectedHospital] = useState(null);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  // selectedDoctor and selectedHospital states are now handled via URL params
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -112,8 +110,6 @@ function App() {
             'Appointments': '/appointments',
             'Patients': '/patients',
             'Doctors': '/doctors',
-            'Hospitals': '/hospitals',
-            'Depts & Services': '/depts-services',
             'Specialities': '/specialities',
             'Enquiries': '/enquiries',
             'Messages': '/messages',
@@ -142,12 +138,12 @@ function App() {
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/appointments" element={<Appointments />} />
-            <Route path="/patients" element={<Patients onOpenDetails={() => navigate('/patient-details')} />} />
-            <Route path="/patient-details" element={<PatientDetails onBack={() => navigate('/patients')} />} />
-            <Route path="/doctors" element={<Doctors onOpenDetails={(d) => { setSelectedDoctor(d); navigate('/doctor-details'); }} />} />
-            <Route path="/doctor-details" element={<DoctorDetails onBack={() => navigate('/doctors')} doctor={selectedDoctor} />} />
-            <Route path="/hospitals" element={<Hospitals onOpenDetails={(h) => { setSelectedHospital(h); navigate('/hospital-details'); }} />} />
-            <Route path="/hospital-details" element={<HospitalDetails onBack={() => navigate('/hospitals')} hospital={selectedHospital} />} />
+            <Route path="/patients" element={<Patients onOpenDetails={(p) => navigate(`/patient-details/${p.id || p._id}`)} />} />
+            <Route path="/patient-details/:id" element={<PatientDetails onBack={() => navigate('/patients')} />} />
+            <Route path="/doctors" element={<Doctors onOpenDetails={(d) => navigate(`/doctor-details/${d._id}`)} />} />
+            <Route path="/doctor-details/:id" element={<DoctorDetails onBack={() => navigate('/doctors')} />} />
+            <Route path="/hospitals" element={<Hospitals onOpenDetails={(h) => navigate(`/hospital-details/${h._id}`)} />} />
+            <Route path="/hospital-details/:id" element={<HospitalDetails onBack={() => navigate('/hospitals')} />} />
             <Route path="/depts-services" element={<ManageDepts />} />
             <Route path="/specialities" element={<Specialities />} />
             <Route path="/enquiries" element={<Enquiries />} />

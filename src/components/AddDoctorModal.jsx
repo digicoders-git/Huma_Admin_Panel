@@ -13,7 +13,7 @@ const defaultSchedule = {
   Sunday:    { checked: false, start: '09:00', end: '17:00' },
 };
 
-const AddDoctorModal = ({ isOpen, onClose }) => {
+const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
   const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -78,8 +78,56 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       fetchData();
+      if (editData) {
+        setForm({
+          fullName: editData.fullName || '',
+          gender: editData.gender || 'Male',
+          dob: editData.dob ? editData.dob.split('T')[0] : '',
+          doctorId: editData.doctorId || '',
+          about: editData.about || '',
+          phone: editData.phone || '',
+          email: editData.email || '',
+          address: editData.address || '',
+          emergencyName: editData.emergencyName || '',
+          emergencyPhone: editData.emergencyPhone || '',
+          department: editData.department || '',
+          specialization: editData.specialization || '',
+          workType: editData.workType || 'Full Time',
+          startDate: editData.startDate ? editData.startDate.split('T')[0] : '',
+          salary: editData.salary || '',
+          licenseNumber: editData.licenseNumber || '',
+          licenseExpiry: editData.licenseExpiry ? editData.licenseExpiry.split('T')[0] : '',
+        });
+        if (editData.schedule) {
+          try {
+            const parsedSchedule = typeof editData.schedule === 'string' ? JSON.parse(editData.schedule) : editData.schedule;
+            setSchedule(parsedSchedule);
+          } catch (e) { console.error("Error parsing schedule:", e); }
+        }
+        setMinAppt(editData.minAppt || 1);
+        setMaxAppt(editData.maxAppt || 18);
+        if (editData.avatar) {
+          setAvatarPreview(`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${editData.avatar}`);
+        } else {
+          setAvatarPreview('https://via.placeholder.com/300?text=Doctor');
+        }
+      } else {
+        // Reset form for addition
+        setForm({
+          fullName: '', gender: 'Male', dob: '', doctorId: '', about: '', phone: '', email: '',
+          address: '', emergencyName: '', emergencyPhone: '', department: 'General Medicine',
+          specialization: '', workType: 'Full Time', startDate: '', salary: '',
+          licenseNumber: '', licenseExpiry: '',
+        });
+        setSchedule(defaultSchedule);
+        setMinAppt(1);
+        setMaxAppt(18);
+        setAvatarPreview('https://via.placeholder.com/300?text=Doctor');
+        setAvatarFile(null);
+        setUploadedFiles([]);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, editData]);
 
   const [avatarPreview, setAvatarPreview] = useState('https://via.placeholder.com/300?text=Doctor');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -149,8 +197,12 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
         if (f.file) formData.append('certifications', f.file);
       });
 
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/doctor`, {
-        method: 'POST',
+      const url = editData 
+        ? `${import.meta.env.VITE_API_BASE_URL}/doctor/${editData._id}`
+        : `${import.meta.env.VITE_API_BASE_URL}/doctor`;
+      
+      const res = await fetch(url, {
+        method: editData ? 'PUT' : 'POST',
         headers: {
            Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         },
@@ -160,7 +212,7 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
       if(data.success) {
         onClose(); // Parent (Doctors.jsx) will re-fetch
       } else {
-        alert(data.message || 'Error creating doctor');
+        alert(data.message || `Error ${editData ? 'updating' : 'creating'} doctor`);
       }
     } catch (e) {
       console.error(e);
@@ -175,319 +227,263 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4"
          style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-      <div className="bg-white rounded-2xl w-full max-w-[720px] shadow-2xl flex flex-col my-auto">
+      <div className="bg-white rounded-2xl w-full max-w-[1100px] shadow-2xl flex flex-col my-auto">
         
         {/* ── Modal Header ─────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl z-10">
-          <h2 className="font-bold text-gray-900 text-[16px]">Add New Doctor</h2>
+          <h2 className="font-bold text-gray-900 text-[16px]">{editData ? 'Edit Doctor' : 'Add New Doctor'}</h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <div className="overflow-y-auto px-6 py-5 flex flex-col gap-7">
-
-          {/* ── 1. Personal Info ──────────────────────────────────────────── */}
-          <section>
-            <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4">Personal Info</p>
-            <div className="flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
-              {/* Photo Upload */}
-              <div className="flex-shrink-0 relative group">
-                <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
-                <div className="w-28 h-32 md:w-24 md:h-28 rounded-2xl overflow-hidden border-2 border-[#992120]/30 bg-[#e7e3da] shadow-inner">
-                  <img src={avatarPreview} alt="Doctor" className="w-full h-full object-cover object-top" />
-                </div>
-                <button 
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-2 -right-2 w-8 h-8 md:w-6 md:h-6 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-[#992120] hover:bg-[#e7e3da] transition-all hover:scale-110"
-                >
-                  <Pencil size={12} />
-                </button>
-              </div>
-
-              {/* Form Fields */}
-              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Full Name</label>
-                  <input
-                    type="text" value={form.fullName}
-                    onChange={e => handleChange('fullName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]"
-                  />
-                </div>
-                {/* Gender */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Gender</label>
-                  <div className="flex items-center gap-4 mt-1.5">
-                    {['Female', 'Male', 'Other'].map(g => (
-                      <label key={g} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="gender" checked={form.gender === g} onChange={() => handleChange('gender', g)}
-                          className="w-3.5 h-3.5 accent-[#992120]" />
-                        <span className="text-[12px] font-medium text-gray-700">{g}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                {/* DOB */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Date of Birth</label>
-                  <div className="relative">
-                    <input type="date" value={form.dob} onChange={e => handleChange('dob', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120] pr-8" />
-                  </div>
-                </div>
-                {/* Doctor ID */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Doctor ID</label>
-                  <input type="text" value={form.doctorId} onChange={e => handleChange('doctorId', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-                </div>
-                {/* About */}
-                <div className="col-span-2">
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">About</label>
-                  <textarea value={form.about} onChange={e => handleChange('about', e.target.value)} rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120] resize-none" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── 2. Contact Info ───────────────────────────────────────────── */}
-          <section>
-            <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 border-l-4 border-[#992120] pl-3">Contact Info</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Phone */}
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Phone Number</label>
-                <input type="text" value={form.phone}
-                  onChange={e => handleChange('phone', e.target.value)}
-                  placeholder="Input your phone number"
-                  className={`w-full px-3 py-2 border rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 placeholder:text-gray-400 ${
-                    phoneError
-                      ? 'border-red-400 focus:ring-red-200 focus:border-red-400'
-                      : 'border-gray-200 focus:ring-[#992120]/20 focus:border-[#992120]'
-                  }`}
-                />
-                {phoneError && <p className="text-[11px] text-red-400 mt-1 font-medium">Please input the phone number</p>}
-              </div>
-              {/* Email */}
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Email Address</label>
-                <input type="email" value={form.email} onChange={e => handleChange('email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-              </div>
-              {/* Address */}
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">Address</label>
-                <input type="text" value={form.address} onChange={e => handleChange('address', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-              </div>
-              {/* Emergency Contact */}
-              <div className="md:col-span-2">
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-tighter">Emergency Contact</label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input type="text" value={form.emergencyName} onChange={e => handleChange('emergencyName', e.target.value)}
-                    placeholder="Contact Name"
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-                  <input type="text" value={form.emergencyPhone} onChange={e => handleChange('emergencyPhone', e.target.value)}
-                    placeholder="Contact Phone"
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── 3. Professional Info ──────────────────────────────────────── */}
-          <section>
-            <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 border-l-4 border-[#992120] pl-3">Professional Info</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-              {/* Department */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Department</label>
-                <select
-                  value={form.department}
-                  onChange={e => setForm({ ...form, department: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none transition-all"
-                >
-                  <option value="">Select Department</option>
-                  {depts.map(d => (
-                    <option key={d._id} value={d.name}>{d.name}</option>
-                  ))}
-                  {depts.length === 0 && <option disabled>No departments found</option>}
-                </select>
-              </div>
-
-              {/* Specialization */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Specialization</label>
-                <select
-                  value={form.specialization}
-                  onChange={e => setForm({ ...form, specialization: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none transition-all"
-                >
-                  <option value="">Select Specialization</option>
-                  {specs.map(s => (
-                    <option key={s._id} value={s.name}>{s.name}</option>
-                  ))}
-                  {specs.length === 0 && <option disabled>No specializations found</option>}
-                </select>
-              </div>
-
-              {/* Work Type */}
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-tighter">Work Type</label>
-                <div className="flex items-center gap-6 bg-gray-50/50 p-2.5 rounded-2xl border border-gray-100 w-full sm:w-fit">
-                  {['Full Time', 'Part Time'].map(w => (
-                    <label key={w} className="flex items-center gap-2.5 cursor-pointer group flex-1 sm:flex-initial justify-center">
-                      <input type="radio" name="workType" checked={form.workType === w} onChange={() => handleChange('workType', w)}
-                        className="w-4 h-4 accent-[#992120] cursor-pointer" />
-                      <span className={`text-[12px] font-black ${form.workType === w ? 'text-primary' : 'text-gray-400'}`}>{w}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Employment Start Date */}
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-tighter">Employment Start Date</label>
-                <div className="relative">
-                  <input type="date" value={form.startDate} onChange={e => handleChange('startDate', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-[13px] text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120] shadow-sm" />
-                </div>
-              </div>
-
-              {/* Salary */}
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-tighter">Salary</label>
-                <div className="relative flex items-center">
-                  <input type="text" value={form.salary} onChange={e => handleChange('salary', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-[13px] text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120] pr-20 shadow-sm" />
-                  <span className="absolute right-4 text-[12px] text-gray-400 font-bold uppercase tracking-widest">/ month</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── 4. Licenses & Certifications ──────────────────────────────── */}
-          <section>
-            <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 border-l-4 border-[#992120] pl-3">Licenses & Certifications</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* License Number */}
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-tighter">Medical License Number</label>
-                <input type="text" value={form.licenseNumber} onChange={e => handleChange('licenseNumber', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-              </div>
-              {/* Certification Upload */}
-              <div className="md:row-span-2">
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-tighter">Certification Uploads</label>
-                <div
-                  onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={handleFileDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`w-full min-h-[100px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all ${
-                    dragging ? 'border-[#992120] bg-[#e7e3da]' : 'border-gray-200 hover:border-[#992120]/40 hover:bg-gray-50'
-                  }`}
-                >
-                  <Upload size={20} className="text-primary mb-2" />
-                  <p className="text-[11px] text-gray-500 font-bold">
-                    Drop files or <span className="text-[#992120] underline underline-offset-2">Browse</span>
-                  </p>
-                </div>
-                <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
-
-                {/* Uploaded Files */}
-                <div className="mt-4 flex flex-col gap-2">
-                  {uploadedFiles.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[#e7e3da] rounded-xl border border-[#992120]/10">
-                      {f.type === 'pdf'
-                        ? <FileText size={14} className="text-primary flex-shrink-0" />
-                        : <Image size={14} className="text-primary flex-shrink-0" />}
-                      <span className="text-[12px] text-gray-700 font-bold flex-1 truncate">{f.name}</span>
-                      <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 p-1">
-                        <Trash2 size={14} />
+        <div className="overflow-y-auto px-6 py-6 flex flex-col gap-6 max-h-[85vh]">
+          {/* Main 2-Column Grid for Desktop */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
+            
+            {/* ── LEFT COLUMN ───────────────────────────────────────────── */}
+            <div className="flex flex-col gap-8">
+              {/* ── 1. Personal Info ──────────────────────────────────────────── */}
+              <section className="bg-gray-50/30 p-4 rounded-2xl border border-gray-100">
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-[#992120] rounded-full"></span>
+                  Personal Info
+                </p>
+                <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+                  {/* Photo Upload Area */}
+                  <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                    <div className="relative group">
+                      <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
+                      <div 
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="w-24 h-28 rounded-2xl overflow-hidden border-2 border-[#992120]/20 bg-gray-50 shadow-sm transition-all group-hover:border-[#992120]/60 cursor-pointer relative"
+                      >
+                        <img 
+                          src={avatarPreview} 
+                          alt="Doctor" 
+                          className="w-full h-full object-cover object-top" 
+                          onError={(e) => {
+                            e.target.src = 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png'; // Pro medical fallback
+                            e.target.className = "w-full h-full object-contain p-4 opacity-40 bg-gray-50";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                          <Upload size={16} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); avatarInputRef.current?.click(); }}
+                        className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all hover:scale-110 z-10"
+                      >
+                        <Pencil size={12} />
                       </button>
                     </div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Upload Photo</span>
+                  </div>
+
+                  {/* Fields */}
+                  <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Full Name</label>
+                      <input
+                        type="text" value={form.fullName}
+                        onChange={e => handleChange('fullName', e.target.value)}
+                        placeholder="Dr. Full Name"
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Gender</label>
+                      <select 
+                        value={form.gender} 
+                        onChange={e => handleChange('gender', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">DOB</label>
+                      <input type="date" value={form.dob} onChange={e => handleChange('dob', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">About</label>
+                      <textarea value={form.about} onChange={e => handleChange('about', e.target.value)} rows={2}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none resize-none" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* ── 2. Contact Info ───────────────────────────────────────────── */}
+              <section className="bg-gray-50/30 p-4 rounded-2xl border border-gray-100">
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-[#992120] rounded-full"></span>
+                  Contact Details
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Phone Number</label>
+                    <input type="text" value={form.phone}
+                      onChange={e => handleChange('phone', e.target.value)}
+                      className={`w-full px-3 py-2 bg-white border rounded-xl text-[13px] font-semibold focus:ring-2 ${
+                        phoneError ? 'border-red-400 focus:ring-red-100' : 'border-gray-200 focus:ring-[#992120]/10'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Email</label>
+                    <input type="email" value={form.email} onChange={e => handleChange('email', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Address</label>
+                    <input type="text" value={form.address} onChange={e => handleChange('address', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none" />
+                  </div>
+                </div>
+              </section>
+
+              {/* ── 4. Licenses & Certifications ──────────────────────────────── */}
+              <section className="bg-gray-50/30 p-4 rounded-2xl border border-gray-100">
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-[#992120] rounded-full"></span>
+                  Licenses & Files
+                </p>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">License Number</label>
+                    <input type="text" value={form.licenseNumber} onChange={e => handleChange('licenseNumber', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Upload Certifications</label>
+                    <div
+                      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={handleFileDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${
+                        dragging ? 'border-[#992120] bg-primary-light' : 'border-gray-200 bg-white hover:border-primary/40'
+                      }`}
+                    >
+                      <Upload size={18} className="text-primary mb-1" />
+                      <p className="text-[10px] text-gray-500 font-bold">Drop files or <span className="text-primary underline">Browse</span></p>
+                    </div>
+                    <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {uploadedFiles.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-gray-100 shadow-sm">
+                          <FileText size={12} className="text-primary" />
+                          <span className="text-[10px] font-bold text-gray-700 max-w-[80px] truncate">{f.name}</span>
+                          <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-gray-300 hover:text-red-500"><Trash2 size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* ── RIGHT COLUMN ──────────────────────────────────────────── */}
+            <div className="flex flex-col gap-8">
+              {/* ── 3. Professional Info ──────────────────────────────────────── */}
+              <section className="bg-gray-50/30 p-4 rounded-2xl border border-gray-100">
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-[#992120] rounded-full"></span>
+                  Professional Details
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Department</label>
+                    <select value={form.department} onChange={e => handleChange('department', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 transition-all">
+                      <option value="">Select Dept</option>
+                      {depts.map(d => <option key={d._id} value={d.name}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Specialization</label>
+                    <select value={form.specialization} onChange={e => handleChange('specialization', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 transition-all">
+                      <option value="">Select Specialization</option>
+                      {specs.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Work Type</label>
+                    <div className="flex bg-white p-1 rounded-xl border border-gray-100">
+                      {['Full Time', 'Part Time'].map(w => (
+                        <button key={w} onClick={() => handleChange('workType', w)}
+                          className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${form.workType === w ? 'bg-[#992120] text-white shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}>
+                          {w}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Salary (/mo)</label>
+                    <input type="text" value={form.salary} onChange={e => handleChange('salary', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" />
+                  </div>
+                </div>
+              </section>
+
+              {/* ── 5. Schedule ───────────────────────────────────────────────── */}
+              <section className="bg-gray-50/30 p-4 rounded-2xl border border-gray-100">
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-[#992120] rounded-full"></span>
+                  Weekly Schedule
+                </p>
+                <div className="space-y-3">
+                  {DAYS.map(day => (
+                    <div key={day} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-50 shadow-sm transition-all hover:border-[#992120]/20">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={schedule[day].checked} onChange={() => handleScheduleCheck(day)}
+                          className="w-4 h-4 rounded-md accent-[#992120]" />
+                        <span className={`text-[12px] font-bold ${schedule[day].checked ? 'text-gray-900' : 'text-gray-300'}`}>{day}</span>
+                      </div>
+                      {schedule[day].checked && (
+                        <div className="flex items-center gap-2">
+                          <input type="time" value={schedule[day].start} onChange={e => handleScheduleTime(day, 'start', e.target.value)}
+                            className="px-2 py-1 border border-gray-100 rounded-lg text-[11px] font-bold text-gray-700 focus:ring-1 focus:ring-primary/20 outline-none" />
+                          <span className="text-gray-300 text-[10px]">TO</span>
+                          <input type="time" value={schedule[day].end} onChange={e => handleScheduleTime(day, 'end', e.target.value)}
+                            className="px-2 py-1 border border-gray-100 rounded-lg text-[11px] font-bold text-gray-700 focus:ring-1 focus:ring-primary/20 outline-none" />
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-              {/* License Expiry */}
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-tighter">License Expiry Date</label>
-                <input type="date" value={form.licenseExpiry} onChange={e => handleChange('licenseExpiry', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-              </div>
-            </div>
-          </section>
-
-          {/* ── 5. Schedule ───────────────────────────────────────────────── */}
-          <section>
-            <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 border-l-4 border-[#992120] pl-3">Schedule</p>
-            <p className="text-[11px] font-semibold text-gray-500 mb-3">Working Days & Shifts</p>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
-              {DAYS.map(day => (
-                <div key={day} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={schedule[day].checked}
-                    onChange={() => handleScheduleCheck(day)}
-                    className="w-4 h-4 rounded accent-[#992120] flex-shrink-0"
-                  />
-                  <span className={`text-[12px] font-semibold w-24 flex-shrink-0 ${schedule[day].checked ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {day}
-                  </span>
-                  {schedule[day].checked && (
-                    <div className="flex items-center gap-2 flex-1">
-                      <input type="time" value={schedule[day].start}
-                        onChange={e => handleScheduleTime(day, 'start', e.target.value)}
-                        className="flex-1 px-2 py-1 border border-gray-200 rounded-lg text-[12px] text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
-                      <span className="text-gray-400 text-[12px]">—</span>
-                      <input type="time" value={schedule[day].end}
-                        onChange={e => handleScheduleTime(day, 'end', e.target.value)}
-                        className="flex-1 px-2 py-1 border border-gray-200 rounded-lg text-[12px] text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120]" />
+                
+                {/* Min/Max Appointment */}
+                <div className="mt-6 flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-50 shadow-sm lg:col-span-2">
+                  <div className="flex items-center gap-2 text-[12px] font-bold text-gray-700">Appts/Day:</div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] text-gray-400 font-bold">MIN</span>
+                      <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100">
+                        <button onClick={() => setMinAppt(v => Math.max(0, v - 1))} className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-primary"><Minus size={10} strokeWidth={3} /></button>
+                        <span className="w-6 text-center text-[12px] font-bold">{minAppt}</span>
+                        <button onClick={() => setMinAppt(v => v + 1)} className="w-7 h-7 flex items-center justify-center bg-primary text-white rounded-lg"><Plus size={10} strokeWidth={3} /></button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-6 pt-4 border-t border-gray-100">
-              <span className="text-[12px] font-bold text-gray-700">Max Appt per Day</span>
-              <div className="flex items-center gap-4 w-full sm:w-auto">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-400 font-bold uppercase">Min</span>
-                  <div className="flex items-center border border-gray-100 rounded-xl overflow-hidden bg-gray-50 shadow-sm">
-                    <button onClick={() => setMinAppt(v => Math.max(0, v - 1))}
-                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                      <Minus size={10} strokeWidth={3} />
-                    </button>
-                    <span className="w-10 text-center text-[13px] font-bold text-gray-900">{minAppt}</span>
-                    <button onClick={() => setMinAppt(v => v + 1)}
-                      className="w-8 h-8 flex items-center justify-center bg-primary text-white hover:bg-[#7a1a19] transition-colors">
-                      <Plus size={10} strokeWidth={3} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] text-gray-400 font-bold">MAX</span>
+                      <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100">
+                        <button onClick={() => setMaxAppt(v => Math.max(minAppt, v - 1))} className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-primary"><Minus size={10} strokeWidth={3} /></button>
+                        <span className="w-6 text-center text-[12px] font-bold">{maxAppt}</span>
+                        <button onClick={() => setMaxAppt(v => v + 1)} className="w-7 h-7 flex items-center justify-center bg-primary text-white rounded-lg"><Plus size={10} strokeWidth={3} /></button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-400 font-bold uppercase">Max</span>
-                  <div className="flex items-center border border-gray-100 rounded-xl overflow-hidden bg-gray-50 shadow-sm">
-                    <button onClick={() => setMaxAppt(v => Math.max(minAppt, v - 1))}
-                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                      <Minus size={10} strokeWidth={3} />
-                    </button>
-                    <span className="w-10 text-center text-[13px] font-bold text-gray-900">{maxAppt}</span>
-                    <button onClick={() => setMaxAppt(v => v + 1)}
-                      className="w-8 h-8 flex items-center justify-center bg-primary text-white hover:bg-[#7a1a19] transition-colors">
-                      <Plus size={10} strokeWidth={3} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              </section>
             </div>
-          </section>
+          </div>
         </div>
 
         {/* ── Footer Buttons ────────────────────────────────────────────── */}
@@ -503,7 +499,7 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
             disabled={loading}
             className="flex-1 py-2.5 bg-[#992120] text-white rounded-xl text-[13px] font-semibold hover:bg-[#7a1a19] transition-colors shadow-sm shadow-[#992120]/30 disabled:opacity-50"
           >
-            {loading ? 'Adding...' : 'Add Doctor'}
+            {loading ? (editData ? 'Updating...' : 'Adding...') : (editData ? 'Update Doctor' : 'Add Doctor')}
           </button>
         </div>
       </div>

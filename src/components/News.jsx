@@ -1,274 +1,382 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Newspaper, 
   Plus, 
   Search, 
-  Calendar, 
-  Tag, 
   Trash2, 
   Edit3, 
-  Eye, 
-  CheckCircle2, 
-  Clock, 
   X,
-  FileText,
-  Image as ImageIcon,
+  Calendar,
+  Loader2,
+  Upload,
+  Pencil,
+  Eye,
+  CheckCircle2,
+  Clock,
   ArrowRight
 } from 'lucide-react';
 
-const newsData = [
-  {
-    id: 1,
-    title: 'New Neurology Wing Opening This Monday',
-    category: 'Latest',
-    date: '15 Oct 2025',
-    author: 'Admin',
-    status: 'Published',
-    description: 'We are proud to announce the opening of our state-of-the-art neurology wing equipped with the latest MRI technology.',
-    image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=400'
-  },
-  {
-    id: 2,
-    title: 'Free Health Check-up Camp in Rural Areas',
-    category: 'Event',
-    date: '12 Oct 2025',
-    author: 'Management',
-    status: 'Scheduled',
-    description: 'Our team will be visiting the neighboring villages to provide free medical consultations and basic diagnostics.',
-    image: 'https://images.unsplash.com/photo-1576091160550-217359f42f8c?auto=format&fit=crop&q=80&w=400'
-  },
-  {
-    id: 3,
-    title: 'Important Update: New Visiting Hours',
-    category: 'Notice',
-    date: '10 Oct 2025',
-    author: 'Staff',
-    status: 'Published',
-    description: 'Please note the revised visiting hours for the General Ward starting from next month to ensure patient rest.',
-    image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=400'
-  }
-];
+const API = import.meta.env.VITE_API_BASE_URL;
 
 const News = () => {
+  const [newsList, setNewsList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Modal states
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    category: 'Latest', 
+    content: '',
+    excerpt: '',
+    isPublished: true 
+  });
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
 
   const categories = ['All', 'Latest', 'Event', 'Notice'];
 
-  const filteredNews = newsData.filter(item => {
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null });
+
+  const fetchNews = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/blog/all`);
+      const data = await res.json();
+      if (data.success) {
+        setNewsList(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching news:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const url = editingItem 
+      ? `${API}/blog/update/${editingItem._id}` 
+      : `${API}/blog/create`;
+
+    const body = new FormData();
+    body.append('title', formData.title);
+    body.append('category', formData.category);
+    body.append('content', formData.content);
+    body.append('excerpt', formData.excerpt);
+    body.append('isPublished', formData.isPublished);
+    if (image) body.append('coverImage', image);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(url, {
+        method: editingItem ? 'PUT' : 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+        },
+        body
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchNews();
+        closeFormModal();
+      } else {
+        alert("Failed: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error saving news:", error);
+      alert("Error saving: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    const { id } = deleteConfirm;
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API}/blog/delete/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchNews();
+        setDeleteConfirm({ show: false, id: null });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDelete = (id) => {
+    setDeleteConfirm({ show: true, id });
+  };
+
+
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setFormData({
+      title: item.title || '',
+      category: item.category || 'Latest',
+      content: item.content || '',
+      excerpt: item.excerpt || '',
+      isPublished: item.isPublished !== false
+    });
+    setPreview(getMediaUrl(item.coverImage));
+    setImage(null);
+    setIsFormModalOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormData({ title: '', category: 'Latest', content: '', excerpt: '', isPublished: true });
+    setImage(null);
+    setPreview(null);
+    setEditingItem(null);
+  };
+
+  const closeFormModal = () => {
+    setIsFormModalOpen(false);
+    resetForm();
+  };
+
+  const getMediaUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `${API.replace('/api', '')}/${url}`;
+  };
+
+  const filteredNews = newsList.filter(item => {
     const matchesFilter = activeFilter === 'All' || item.category === activeFilter;
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
   return (
-    <div className="px-6 py-4 flex flex-col gap-6 max-w-[1200px] mx-auto animate-fade-in pb-12">
+    <div className="px-4 md:px-8 pb-12 max-w-[1600px] mx-auto animate-in fade-in duration-500">
       
-      {/* Add News Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 h-[90vh] flex flex-col">
-              <div className="px-10 py-8 bg-primary text-white flex justify-between items-center shrink-0">
-                 <div>
-                    <h3 className="text-2xl font-bold">Post New Article</h3>
-                    <p className="text-xs opacity-80 font-medium mt-1 uppercase tracking-widest">Broadcast news to your website</p>
-                 </div>
-                 <button onClick={() => setIsModalOpen(false)} className="bg-white/20 p-2 rounded-2xl hover:bg-white/30 transition-all">
-                    <X size={24} />
-                 </button>
-              </div>
-              <form className="p-10 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-                 <div className="space-y-4">
-                    <div className="space-y-2">
-                       <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Headline / Title</label>
-                       <input type="text" placeholder="e.g. Breaking: New Medical Advancements" className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-lg font-extrabold text-gray-900 focus:ring-2 focus:ring-primary/20 outline-none placeholder:text-gray-300" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-2">
-                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Category</label>
-                          <select className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary/20 outline-none">
-                             <option>Latest News</option>
-                             <option>Event</option>
-                             <option>Urgent Notice</option>
-                          </select>
-                       </div>
-                       <div className="space-y-2">
-                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Publish Status</label>
-                          <select className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary/20 outline-none">
-                             <option>Immediate</option>
-                             <option>Draft</option>
-                             <option>Scheduled</option>
-                          </select>
-                       </div>
-                    </div>
-
-                    <div className="space-y-2 border-2 border-dashed border-gray-100 rounded-[32px] p-8 text-center hover:bg-primary-light/30 hover:border-primary/20 transition-all cursor-pointer group">
-                       <div className="mx-auto w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-primary-light group-hover:text-primary transition-all mb-3 text-center">
-                          <ImageIcon size={24} />
-                       </div>
-                       <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Upload Cover Image</p>
-                    </div>
-
-                    <div className="space-y-2">
-                       <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Article Content</label>
-                       <textarea rows="6" placeholder="Write the full story here..." className="w-full px-6 py-4 bg-gray-50 border-none rounded-3xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none resize-none leading-relaxed"></textarea>
-                    </div>
-                 </div>
-
-                 <div className="flex gap-4 pt-4 shrink-0">
-                    <button type="submit" className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:opacity-90 transition-all">PUBLISH ARTICLE</button>
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 text-gray-400 font-bold text-sm hover:text-gray-600 transition-colors">CANCEL</button>
-                 </div>
-              </form>
-           </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── HEADER ────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">News & Announcements</h2>
-          <p className="text-xs text-gray-500 mt-1">Keep your patients and community updated with the latest happenings.</p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Manage Website Articles</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:opacity-90 transition-all active:scale-95"
+          onClick={() => { resetForm(); setIsFormModalOpen(true); }}
+          className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95"
         >
-          <Plus size={18} />
+          <Plus size={16} />
           Post News
         </button>
       </div>
 
-      {/* Filters & Search */}
-      <div className="flex flex-col lg:flex-row items-center gap-4">
-         <div className="w-full lg:w-auto overflow-x-auto scrollbar-hide -mx-6 px-6 lg:mx-0 lg:px-0">
-            <div className="flex p-1 bg-gray-50 rounded-[1.25rem] gap-1 w-max lg:w-auto min-w-full lg:min-w-0">
-               {categories.map((cat) => (
-                 <button
-                   key={cat}
-                   onClick={() => setActiveFilter(cat)}
-                   className={`px-6 py-2.5 rounded-2xl text-[10px] sm:text-[11px] font-black tracking-widest uppercase transition-all whitespace-nowrap ${
-                      activeFilter === cat 
-                       ? 'bg-white text-primary shadow-sm' 
-                       : 'text-gray-400 hover:text-gray-600'
-                   }`}
-                 >
-                   {cat}
-                 </button>
-               ))}
-            </div>
-         </div>
-         <div className="relative flex-1 w-full">
-            <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" />
+      {/* ── MAIN CARD CONTAINER ──────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-hidden">
+        
+        {/* Search & Filters */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input 
               type="text" 
-              placeholder="Search news titles or keywords..." 
-              className="w-full pl-14 pr-6 py-4 bg-white shadow-sm border border-gray-100 rounded-3xl text-sm font-semibold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+              placeholder="Search news..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-primary/10 outline-none transition-all"
             />
-         </div>
-      </div>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 w-full md:w-auto">
+             {categories.map(cat => (
+               <button 
+                 key={cat}
+                 onClick={() => setActiveFilter(cat)}
+                 className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${activeFilter === cat ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:bg-gray-50 border border-gray-100'}`}
+               >
+                 {cat}
+               </button>
+             ))}
+          </div>
+        </div>
 
-      {/* News List */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-         {/* Main List Column */}
-         <div className="lg:col-span-8 flex flex-col gap-6">
+        {/* ── NEWS GRID ──────────────────────────────────────────────────── */}
+        {loading ? (
+          <p className="text-center py-20 text-gray-400 font-bold">Loading records...</p>
+        ) : filteredNews.length === 0 ? (
+          <p className="text-center py-20 text-gray-400 font-bold italic">No news articles found.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {filteredNews.map((news) => (
-              <div key={news.id} className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-8 hover:shadow-2xl hover:border-primary/20 transition-all group overflow-hidden relative">
-                 {/* Article Image */}
-                 <div className="w-full md:w-56 h-56 md:h-auto rounded-[32px] overflow-hidden shrink-0">
-                    <img src={news.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={news.title} />
-                 </div>
+              <div key={news._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200 flex flex-col overflow-hidden">
+                {/* News Image Area */}
+                <div className="relative h-44 bg-gray-50 border-b border-gray-100 overflow-hidden">
+                  <img 
+                    src={getMediaUrl(news.coverImage)} 
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
+                    alt={news.title}
+                    onError={(e) => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/2965/2965872.png'; e.target.className = "w-full h-full object-contain p-10 opacity-20"; }}
+                  />
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">{news.category}</span>
+                  </div>
+                </div>
 
-                 {/* Content */}
-                 <div className="flex-1 flex flex-col py-2">
-                    <div className="flex items-center gap-3 mb-4">
-                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                          news.category === 'Latest' ? 'bg-primary-light text-primary' :
-                          news.category === 'Event' ? 'bg-purple-50 text-purple-600' :
-                          'bg-amber-50 text-amber-600'
-                       }`}>
-                          {news.category}
-                       </span>
-                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                          <Calendar size={12} className="text-primary" /> {news.date}
-                       </div>
+                {/* News Info */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <h4 className="font-bold text-gray-900 text-[14px] line-clamp-2 mb-2 min-h-[40px] leading-tight">{news.title}</h4>
+                  
+                  <div className="flex items-center gap-2 mb-4">
+                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${news.isPublished ? 'bg-primary-light text-primary border border-primary/10' : 'bg-red-50 text-red-500 border border-red-100'}`}>
+                       {news.isPublished ? 'Published' : 'Draft'}
+                     </span>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
+                    <div className="flex gap-1.5">
+                       <button onClick={() => handleEdit(news)} className="p-2 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-100"><Pencil size={13} /></button>
+                       <button onClick={() => handleDelete(news._id)} className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-100"><Trash2 size={13} /></button>
                     </div>
-
-                    <h3 className="text-xl font-black text-gray-900 leading-tight mb-4 group-hover:text-primary transition-colors">
-                       {news.title}
-                    </h3>
-                    
-                    <p className="text-sm font-medium text-gray-500 line-clamp-2 mb-6 leading-relaxed">
-                       {news.description}
-                    </p>
-
-                    <div className="mt-auto flex items-center justify-between pt-6 border-t border-gray-50">
-                       <div className="flex items-center gap-3">
-                          <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${
-                             news.status === 'Published' ? 'text-primary' : 'text-amber-500'
-                          }`}>
-                             {news.status === 'Published' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                             {news.status}
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-2">
-                          <button className="p-2.5 text-gray-300 hover:text-primary hover:bg-primary-light rounded-xl transition-all">
-                             <Edit3 size={18} />
-                          </button>
-                          <button className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                             <Trash2 size={18} />
-                          </button>
-                       </div>
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400">
+                      <Calendar size={12} /> {new Date(news.createdAt).toLocaleDateString()}
                     </div>
-                 </div>
+                  </div>
+                </div>
               </div>
             ))}
-         </div>
-
-         {/* Sidebar / Stats Column */}
-         <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-primary rounded-[40px] p-8 text-white shadow-2xl shadow-primary/20 relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2"></div>
-               <Newspaper size={32} className="mb-6 opacity-80" />
-               <h4 className="text-sm font-black uppercase tracking-widest mb-2 opacity-80">Newsletter Reach</h4>
-               <h2 className="text-4xl font-black mb-6">12.4K</h2>
-               <p className="text-xs font-medium opacity-80 leading-relaxed mb-6">
-                  Your announcements are seen by thousands of people every week through the mobile app and website.
-               </p>
-               <button className="w-full py-4 bg-white text-primary rounded-2xl font-black text-xs shadow-xl flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
-                  VIEW ANALYTICS <ArrowRight size={14} />
-               </button>
-            </div>
-
-            <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm">
-               <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <Tag size={14} className="text-primary" /> Topic Popularity
-               </h4>
-               <div className="space-y-4">
-                  {[
-                    { label: 'Infrastructure', count: 42, color: 'bg-primary' },
-                    { label: 'Patient News', count: 28, color: 'bg-blue-500' },
-                    { label: 'Medical Camp', count: 65, color: 'bg-purple-500' },
-                    { label: 'Staff Notice', count: 12, color: 'bg-amber-500' },
-                  ].map((topic, i) => (
-                    <div key={i} className="space-y-1.5">
-                       <div className="flex justify-between text-[11px] font-black text-gray-700 uppercase tracking-tighter">
-                          <span>{topic.label}</span>
-                          <span>{topic.count}%</span>
-                       </div>
-                       <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
-                          <div className={`h-full ${topic.color}`} style={{ width: `${topic.count}%` }}></div>
-                       </div>
-                    </div>
-                  ))}
-               </div>
-            </div>
-         </div>
+          </div>
+        )}
       </div>
+
+      {/* ── FORM MODAL ───────────────────────────────────────────────────── */}
+      {isFormModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+             <div className="bg-primary p-5 text-white flex justify-between items-center shrink-0">
+                <h3 className="text-lg font-bold">{editingItem ? 'Update' : 'Post'} News Article</h3>
+                <button onClick={closeFormModal} className="p-1 hover:bg-white/20 rounded-full transition-all">
+                  <X size={20} />
+                </button>
+             </div>
+             
+             <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <div className="flex justify-center mb-2">
+                  <div className="relative group w-full h-48 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                    {preview ? <img src={preview} className="w-full h-full object-cover" /> : <Upload size={32} className="text-gray-300" />}
+                    <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files[0]; if (file) { setImage(file); setPreview(URL.createObjectURL(file)); }}} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                   <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Title</label>
+                      <input 
+                        type="text" required value={formData.title}
+                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none" 
+                      />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Category</label>
+                        <select 
+                          value={formData.category}
+                          onChange={(e) => setFormData({...formData, category: e.target.value})}
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none"
+                        >
+                           {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Status</label>
+                        <select 
+                          value={formData.isPublished ? 'true' : 'false'}
+                          onChange={(e) => setFormData({...formData, isPublished: e.target.value === 'true'})}
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none"
+                        >
+                           <option value="true">Published</option>
+                           <option value="false">Draft</option>
+                        </select>
+                      </div>
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Excerpt (Short Summary)</label>
+                      <textarea 
+                        value={formData.excerpt}
+                        onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none resize-none h-20" 
+                      />
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Content</label>
+                      <textarea 
+                        required value={formData.content}
+                        onChange={(e) => setFormData({...formData, content: e.target.value})}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none resize-none h-40" 
+                      />
+                   </div>
+                </div>
+
+                <div className="flex gap-4 pt-2 shrink-0">
+                   <button type="submit" disabled={submitting} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50">
+                     {submitting ? 'Saving...' : 'Save Article'}
+                   </button>
+                   <button type="button" onClick={closeFormModal} className="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-200">Cancel</button>
+                </div>
+             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE CONFIRMATION MODAL ───────────────────────────────────── */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirm({ show: false, id: null })}></div>
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl animate-in zoom-in duration-300">
+             <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mb-4">
+                   <Trash2 size={32} />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter italic">Remove Article?</h3>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-2 mb-8 text-balance">Are you sure you want to delete this news article permanently?</p>
+                
+                <div className="grid grid-cols-2 gap-4 w-full">
+                   <button 
+                    onClick={confirmDelete}
+                    className="py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95"
+                   >
+                      Confirm
+                   </button>
+                   <button 
+                    onClick={() => setDeleteConfirm({ show: false, id: null })}
+                    className="py-3.5 bg-gray-50 text-gray-400 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition-all active:scale-95"
+                   >
+                      Cancel
+                   </button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #fdfdfd; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+      `}</style>
+
     </div>
   );
 };

@@ -1,162 +1,257 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Camera, Globe, Briefcase, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Calendar, Camera, Globe, Loader2, Save, X } from 'lucide-react';
+
+const API = import.meta.env.VITE_API_BASE_URL;
 
 const Profile = () => {
-  const [activeTab, setActiveTab] = useState('Personal');
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  // Form State
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+  });
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API}/admin/get`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProfile(data.data);
+        setFormData({
+          name: data.data.name || '',
+          email: data.data.email || '',
+          phone: data.data.phone || '',
+        });
+        setPreview(getMediaUrl(data.data.profilePhoto));
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    
+    const body = new FormData();
+    body.append('name', formData.name);
+    body.append('email', formData.email);
+    body.append('phone', formData.phone);
+    if (image) body.append('profilePhoto', image);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API}/admin/update/${profile._id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProfile(data.data);
+        setEditing(false);
+        // Trigger event to update header
+        window.dispatchEvent(new Event('profileUpdated'));
+        alert("Profile updated successfully!");
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert("Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getMediaUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `${API.replace('/api', '')}${url}`;
+  };
+
+  if (loading || !profile) {
+    return (
+      <div className="h-[70vh] flex flex-col items-center justify-center gap-4">
+        <Loader2 size={40} className="animate-spin text-primary" />
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Loading Profile...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="px-6 py-4 flex flex-col gap-6 max-w-[1200px] mx-auto animate-fade-in">
-      {/* Top Banner / Header Card */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-        {/* Decorative background element */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-light rounded-full translate-x-1/2 -translate-y-1/2 opacity-50"></div>
-        
-        <div className="relative">
-          <img 
-            src="https://i.pravatar.cc/150?u=a042581f4e29026704b" 
-            className="w-32 h-32 rounded-3xl object-cover border-4 border-white shadow-xl"
-            alt="James Cartis"
-          />
-          <button className="absolute -right-2 -bottom-2 bg-primary text-white p-2.5 rounded-xl shadow-lg hover:opacity-90 transition-all active:scale-95">
-            <Camera size={18} />
-          </button>
+    <div className="px-4 md:px-8 pb-12 max-w-[1000px] mx-auto animate-in fade-in duration-500">
+      
+      {/* ── HEADER ────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Admin Profile</h2>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Manage your identity and details</p>
         </div>
+        {!editing ? (
+          <button 
+            onClick={() => setEditing(true)}
+            className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-[13px] shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+          >
+            Edit Profile
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button 
+              onClick={handleUpdate}
+              disabled={saving}
+              className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-[13px] shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center gap-2"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Save Changes
+            </button>
+            <button 
+              onClick={() => { setEditing(false); setPreview(getMediaUrl(profile.profilePhoto)); setImage(null); }}
+              className="bg-gray-100 text-gray-400 px-6 py-2 rounded-xl font-bold text-[13px] hover:bg-gray-200 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
 
-        <div className="flex-1 text-center md:text-left z-10">
-          <h2 className="text-3xl font-bold text-gray-900">James Cartis</h2>
-          <p className="text-sm font-semibold text-primary mt-1 uppercase tracking-widest">Administrator</p>
-          <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
-              <MapPin size={14} className="text-primary" /> New York, USA
-            </div>
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
-              <Calendar size={14} className="text-primary" /> Joined January 2024
-            </div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Banner Area */}
+        <div className="h-40 bg-gray-50 relative border-b border-gray-100">
+          <div className="absolute -bottom-16 left-8 md:left-12">
+             <div className="relative group">
+                <div className="w-32 h-32 rounded-3xl border-4 border-white shadow-xl overflow-hidden bg-white">
+                   <img 
+                     src={preview || `https://ui-avatars.com/api/?name=${profile.name}&background=random`} 
+                     className="w-full h-full object-cover" 
+                     alt={profile.name} 
+                   />
+                </div>
+                {editing && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-3xl cursor-pointer opacity-0 group-hover:opacity-100 transition-all">
+                    <Camera size={24} className="text-white" />
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setImage(file);
+                          setPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                )}
+             </div>
           </div>
         </div>
 
-        <div className="flex gap-3 z-10">
-          <button className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
-            Save Changes
-          </button>
-          <button className="bg-white text-gray-400 border border-gray-100 px-6 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all">
-            Cancel
-          </button>
+        {/* Content Area */}
+        <div className="pt-20 pb-12 px-8 md:px-12">
+          {editing ? (
+            <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Full Name</label>
+                  <div className="relative">
+                    <input 
+                      type="text" required
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all"
+                    />
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                  </div>
+               </div>
+               <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Email Address</label>
+                  <div className="relative">
+                    <input 
+                      type="email" required
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all"
+                    />
+                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                  </div>
+               </div>
+               <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Phone Number</label>
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all"
+                    />
+                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                  </div>
+               </div>
+               <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Joined Date</label>
+                  <div className="relative">
+                    <input 
+                      type="text" disabled
+                      value={new Date(profile.createdAt).toLocaleDateString()}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-transparent rounded-xl text-sm font-bold text-gray-400 outline-none"
+                    />
+                    <Calendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-200" />
+                  </div>
+               </div>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-12">
+               <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Display Name</h4>
+                  <p className="text-xl font-bold text-gray-800">{profile.name}</p>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Role</h4>
+                  <p className="text-sm font-bold text-primary uppercase tracking-widest">System Administrator</p>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Email Connection</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                     <Mail size={14} className="text-gray-300" />
+                     <p className="text-sm font-bold text-gray-700">{profile.email}</p>
+                  </div>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact Line</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                     <Phone size={14} className="text-gray-300" />
+                     <p className="text-sm font-bold text-gray-700">{profile.phone || 'Not provided'}</p>
+                  </div>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Account History</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                     <Calendar size={14} className="text-gray-300" />
+                     <p className="text-sm font-bold text-gray-700">Member since {new Date(profile.createdAt).getFullYear()}</p>
+                  </div>
+               </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Sidebar Menu */}
-        <div className="lg:col-span-3">
-          <div className="bg-white p-2 rounded-3xl shadow-sm border border-gray-100 sticky top-24">
-            {['Personal', 'Professional', 'Account Settings', 'Notifications Settings'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[13px] font-bold transition-all ${
-                  activeTab === tab 
-                    ? 'bg-primary-light text-primary shadow-sm' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {tab === 'Personal' && <User size={18} />}
-                {tab === 'Professional' && <Briefcase size={18} />}
-                {tab === 'Account Settings' && <Globe size={18} />}
-                {tab === 'Notifications Settings' && <Trash2 size={18} />}
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="lg:col-span-9 bg-white p-8 rounded-3xl shadow-sm border border-gray-100 min-h-[500px]">
-          <h3 className="text-lg font-bold text-gray-900 mb-8 pb-4 border-b border-gray-50">{activeTab} Information</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Full Name</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  defaultValue="James Cartis"
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20"
-                />
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Email Address</label>
-              <div className="relative">
-                <input 
-                  type="email" 
-                  defaultValue="james.cartis@medlink.com"
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20"
-                />
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Phone Number</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  defaultValue="+1 234 567 890"
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20"
-                />
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Date of Birth</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  defaultValue="12 Oct 1992"
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20"
-                />
-                <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Mailing Address</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  defaultValue="123 Medical Plaza, Apartment 4B, New York, NY 10001"
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20"
-                />
-                <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Gender</label>
-              <select className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20 outline-none appearance-none">
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">Username</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  defaultValue="jcartis_admin"
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-primary/20"
-                />
-                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

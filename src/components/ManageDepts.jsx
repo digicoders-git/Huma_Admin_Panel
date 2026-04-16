@@ -16,6 +16,7 @@ const ManageDepts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null });
 
   const fetchDepartments = async () => {
     try {
@@ -70,19 +71,27 @@ const ManageDepts = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to deactivate this department?")) return;
+  const confirmDelete = async () => {
+    const { id } = deleteConfirm;
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/department/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
       });
       const data = await res.json();
-      if (data.success) fetchDepartments();
+      if (data.success) {
+        fetchDepartments();
+        setDeleteConfirm({ show: false, id: null });
+      }
     } catch (error) {
       console.error("Error deleting department:", error);
     }
   };
+
+  const handleDelete = (id) => {
+    setDeleteConfirm({ show: true, id });
+  };
+
 
   const filteredDepts = departments.filter(d => 
     d.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -192,8 +201,40 @@ const ManageDepts = () => {
           </div>
         ))}
       </div>
+      {/* ── DELETE CONFIRMATION MODAL ───────────────────────────────────── */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirm({ show: false, id: null })}></div>
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl animate-in zoom-in duration-300">
+             <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-4">
+                   <Trash2 size={32} />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter italic">Deactivate Dept?</h3>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-2 mb-8 text-balance">Are you sure you want to deactivate this department? Doctors assigned to this category might be affected.</p>
+                
+                <div className="grid grid-cols-2 gap-4 w-full">
+                   <button 
+                    onClick={confirmDelete}
+                    className="py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95"
+                   >
+                      Deactivate
+                   </button>
+                   <button 
+                    onClick={() => setDeleteConfirm({ show: false, id: null })}
+                    className="py-3.5 bg-gray-50 text-gray-400 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition-all active:scale-95"
+                   >
+                      Cancel
+                   </button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
 
 export default ManageDepts;
+
