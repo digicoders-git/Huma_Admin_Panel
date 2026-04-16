@@ -3,10 +3,37 @@ import { Eye, EyeOff } from 'lucide-react';
 
 const Login = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('adminDetails', JSON.stringify(data.admin));
+        onLogin();
+      } else {
+        setError(data.message || 'Login failed. Please check credentials.');
+      }
+    } catch (err) {
+      setError('An error occurred while connecting to the server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,16 +96,23 @@ const Login = ({ onLogin }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 mb-4 text-sm text-red-500 rounded-lg bg-red-100" role="alert">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <label
                 className="text-xs font-bold uppercase tracking-widest block"
                 style={{ color: '#992120' }}
               >
-                Email or Username
+                Email Address
               </label>
               <input
-                type="text"
-                placeholder="Your email or username"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Your email address"
                 className="w-full px-6 py-4 rounded-2xl text-[13px] font-medium outline-none placeholder-opacity-50"
                 style={{
                   backgroundColor: 'rgba(153,33,32,0.07)',
@@ -101,6 +135,8 @@ const Login = ({ onLogin }) => {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Your password"
                   className="w-full px-6 py-4 rounded-2xl text-[13px] font-medium outline-none placeholder-opacity-50"
                   style={{
@@ -125,12 +161,15 @@ const Login = ({ onLogin }) => {
 
             <button
               type="submit"
-              className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] mt-2"
+              disabled={loading}
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] mt-2 ${
+                loading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
               style={{ backgroundColor: '#992120', color: '#e7e3da' }}
-              onMouseEnter={e => (e.target.style.backgroundColor = '#7a1a19')}
-              onMouseLeave={e => (e.target.style.backgroundColor = '#992120')}
+              onMouseEnter={e => !loading && (e.target.style.backgroundColor = '#7a1a19')}
+              onMouseLeave={e => !loading && (e.target.style.backgroundColor = '#992120')}
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>

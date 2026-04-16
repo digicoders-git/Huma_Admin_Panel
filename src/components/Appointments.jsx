@@ -1,80 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, ShieldCheck, Clock, XSquare, 
-  ChevronDown, MoreHorizontal, ArrowUpRight, ArrowDownRight
+  ChevronDown, MoreHorizontal, ArrowUpRight, ArrowDownRight, RefreshCw
 } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-
-const statCards = [
-  { 
-    title: "Today's Appointments", 
-    value: "52", 
-    trend: "+2.45%", 
-    isPositiveTrend: true,
-    desc: "The available bed capacity is ", 
-    descBold: "180",
-    icon: FileText,
-    iconColor: "text-primary",
-    trendBg: "bg-primary-light"
-  },
-  { 
-    title: "Completed", 
-    value: "28", 
-    trend: "+0.5%", 
-    isPositiveTrend: true,
-    desc: "The incomplete appointments are ", 
-    descBold: "24",
-    icon: ShieldCheck,
-    iconColor: "text-primary",
-    trendBg: "bg-primary-light"
-  },
-  { 
-    title: "Ongoing", 
-    value: "18", 
-    trend: "-0.25%", 
-    isPositiveTrend: false,
-    desc: "The performance is slower than yesterday",
-    descBold: "",
-    icon: Clock,
-    iconColor: "text-primary",
-    trendBg: "bg-red-50 text-red-500"
-  },
-  { 
-    title: "Canceled", 
-    value: "6", 
-    trend: "+1.3%", 
-    isPositiveTrend: true, // But styled red
-    isNegativeColor: true,
-    desc: "The performance is higher than yesterday",
-    descBold: "",
-    icon: XSquare,
-    iconColor: "text-primary",
-    trendBg: "bg-red-50 text-red-500"
-  },
-];
-
-const trendData = [
-  { name: 'Mon', Appointments: 28 },
-  { name: 'Tue', Appointments: 45 },
-  { name: 'Wed', Appointments: 25 },
-  { name: 'Thu', Appointments: 40 },
-  { name: 'Fri', Appointments: 32 },
-  { name: 'Sat', Appointments: 38 },
-  { name: 'Sun', Appointments: 50 },
-];
-
-const appointments = [
-  { id: 1, name: 'Alicia Perth', code: '#PT-2035-001', phone: '+62 812-3456-7102', doctor: 'Dr. Amelia Hart', specialty: 'Cardiology', type: 'Consultation', notes: 'Chest pain check', date: '12 March 2035', time: '08:30 - 09:00', status: 'Completed', avatar: 'https://i.pravatar.cc/150?u=11' },
-  { id: 2, name: 'Bima Kurnia', code: '#PT-2035-024', phone: '+62 813-2255-8941', doctor: 'Dr. Rizky Pratama', specialty: 'General Medicine', type: 'Follow-up', notes: 'Post flu review', date: '12 March 2035', time: '09:00 - 09:20', status: 'Completed', avatar: 'https://i.pravatar.cc/150?u=12' },
-  { id: 3, name: 'Clara Wright', code: '#PT-2035-053', phone: '+62 811-6677-2043', doctor: 'Dr. Sophia Liang', specialty: 'Pediatrics', type: 'Consultation', notes: 'Fever & cough', date: '12 March 2035', time: '09:30 - 10:00', status: 'Ongoing', avatar: 'https://i.pravatar.cc/150?u=13' },
-  { id: 4, name: 'Daniel Wong', code: '#PT-2035-078', phone: '+62 812-9012-4477', doctor: 'Dr. Daniel Obeng', specialty: 'Orthopedics', type: 'Surgery', notes: 'Knee arthroscopy', date: '12 March 2035', time: '10:00 - 12:00', status: 'Scheduled', avatar: 'https://i.pravatar.cc/150?u=14' },
-  { id: 5, name: 'Erica Smith', code: '#PT-2035-091', phone: '+62 815-3399-1280', doctor: 'Dr. Nina Alvarez', specialty: 'Dermatology', type: 'Follow-up', notes: 'Acne treatment plan', date: '12 March 2035', time: '11:00 - 11:20', status: 'Scheduled', avatar: 'https://i.pravatar.cc/150?u=15' },
-  { id: 6, name: 'Francis Rowe', code: '#PT-2035-129', phone: '+62 819-4455-7832', doctor: 'Dr. Amelia Hart', specialty: 'Cardiology', type: 'Follow-up', notes: 'ECG result discussion', date: '12 March 2035', time: '13:00 - 13:20', status: 'Completed', avatar: 'https://i.pravatar.cc/150?u=16' },
-  { id: 7, name: 'Grace Nathanile', code: '#PT-2035-141', phone: '+62 812-7788-9034', doctor: 'Dr. Rizky Pratama', specialty: 'General Medicine', type: 'Consultation', notes: 'Back pain complaint', date: '12 March 2035', time: '13:30 - 14:00', status: 'Canceled', avatar: 'https://i.pravatar.cc/150?u=17' },
-  { id: 8, name: 'Hasan Malik', code: '#PT-2035-152', phone: '+62 817-2200-5611', doctor: 'Dr. Daniel Obeng', specialty: 'Orthopedics', type: 'Telemedicine', notes: 'Online follow-up', date: '12 March 2035', time: '14:15 - 14:45', status: 'Ongoing', avatar: 'https://i.pravatar.cc/150?u=18' },
-];
 
 const renderStatusBadge = (status) => {
   switch(status) {
@@ -92,6 +20,103 @@ const renderStatusBadge = (status) => {
 };
 
 const Appointments = () => {
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/appointment`);
+      const data = await res.json();
+      if (data.success) {
+        setAppointments(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, newStatus: null, isLoading: false });
+
+  const openConfirmStatusModal = (id, newStatus) => {
+    setConfirmModal({ isOpen: true, id, newStatus, isLoading: false });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!confirmModal.id) return;
+    const { id, newStatus } = confirmModal;
+    setConfirmModal(prev => ({ ...prev, isLoading: true }));
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/appointment/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppointments(prev => prev.map(app => app._id === id ? { ...app, status: newStatus } : app));
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    } finally {
+      setConfirmModal({ isOpen: false, id: null, newStatus: null, isLoading: false });
+    }
+  };
+
+  const statCards = [
+    { 
+      title: "Total Appointments", 
+      value: appointments.length.toString(), 
+      trend: "All Time", 
+      isPositiveTrend: true,
+      desc: "All booked appointments in the system", 
+      descBold: "",
+      icon: FileText,
+      iconColor: "text-primary",
+      trendBg: "bg-primary-light"
+    },
+    { 
+      title: "Completed", 
+      value: appointments.filter(a => a.status === 'Completed').length.toString(), 
+      trend: "Done", 
+      isPositiveTrend: true,
+      desc: "Total completed appointments: ", 
+      descBold: appointments.filter(a => a.status === 'Completed').length.toString(),
+      icon: ShieldCheck,
+      iconColor: "text-primary",
+      trendBg: "bg-primary-light"
+    },
+    { 
+      title: "Ongoing / Scheduled", 
+      value: appointments.filter(a => a.status === 'Ongoing' || a.status === 'Scheduled').length.toString(), 
+      trend: "Active", 
+      isPositiveTrend: true,
+      desc: "Currently running or scheduled",
+      descBold: "",
+      icon: Clock,
+      iconColor: "text-primary",
+      trendBg: "bg-yellow-50 text-yellow-600"
+    },
+    { 
+      title: "Canceled", 
+      value: appointments.filter(a => a.status === 'Canceled').length.toString(), 
+      trend: "Cancel", 
+      isPositiveTrend: false, 
+      isNegativeColor: true,
+      desc: "Appointments that were canceled",
+      descBold: "",
+      icon: XSquare,
+      iconColor: "text-primary",
+      trendBg: "bg-red-50 text-red-500"
+    },
+  ];
+
   return (
     <div className="px-4 md:px-8 pb-8 max-w-[1600px] mx-auto flex flex-col gap-6">
 
@@ -118,126 +143,14 @@ const Appointments = () => {
             </div>
 
             <p className="text-[13px] text-gray-500 leading-tight">
-              {card.desc.split('slower')[0]}
-              {card.desc.includes('slower') && <span className="font-bold text-gray-900">slower </span>}
-              {card.desc.includes('higher') && <span className="font-bold text-gray-900">higher </span>}
-              {card.desc.split('slower')[1] || card.desc.split('higher')[1]}
+              {card.desc}
               {card.descBold && <span className="font-bold text-gray-900">{card.descBold}</span>}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Middle Row: Trends & Types */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trends Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[420px]">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="font-bold text-gray-900 text-lg tracking-tight">Appointment Trends</h3>
-              <div className="mt-4">
-                <p className="text-sm text-gray-500 font-medium tracking-wide">Total Appointments</p>
-                <div className="text-4xl font-black text-primary mt-1">320</div>
-              </div>
-            </div>
-            <button className="flex items-center gap-2 text-sm bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 font-bold text-gray-600 hover:bg-gray-100 transition-all">
-              This Week <ChevronDown size={16} />
-            </button>
-          </div>
-          <div className="flex-1 w-full translate-x-[-10px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }} barSize={32}>
-                <defs>
-                  <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#992120" stopOpacity={0.15}/>
-                    <stop offset="100%" stopColor="#992120" stopOpacity={0.02}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#9CA3AF', fontSize: 12, fontWeight: 600}} 
-                  dy={15} 
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#9CA3AF', fontSize: 12, fontWeight: 600}} 
-                />
-                <Tooltip 
-                  cursor={{fill: '#F8FAFB', radius: 8}} 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700}} 
-                />
-                <Bar dataKey="Appointments" fill="url(#colorTrend)" radius={[10, 10, 0, 0]}>
-                  {trendData.map((entry, index) => (
-                    <cell key={`cell-${index}`} fill={entry.Appointments > 45 ? '#992120' : "url(#colorTrend)"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* Appointment Type */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-gray-900 text-lg">Appointment Type</h3>
-            <MoreHorizontal size={20} className="text-gray-400 cursor-pointer" />
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <div className="border-l-4 border-primary pl-3">
-              <p className="text-[13px] font-semibold text-gray-900 mb-1">Consultation</p>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 text-sm">50%</span>
-                <span className="text-[11px] text-gray-500 whitespace-nowrap">26 Total Patients</span>
-              </div>
-            </div>
-            <div className="border-l-4 border-primary/60 pl-3">
-              <p className="text-[13px] font-semibold text-gray-900 mb-1">Follow-up</p>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 text-sm">25%</span>
-                <span className="text-[11px] text-gray-500 whitespace-nowrap">13 Total Patients</span>
-              </div>
-            </div>
-            <div className="border-l-4 border-primary/30 pl-3">
-              <p className="text-[13px] font-semibold text-gray-900 mb-1">Surgery</p>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 text-sm">15%</span>
-                <span className="text-[11px] text-gray-500 whitespace-nowrap">8 Total Patients</span>
-              </div>
-            </div>
-            <div className="border-l-4 border-primary/15 pl-3">
-              <p className="text-[13px] font-semibold text-gray-900 mb-1">Telemedicine</p>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 text-sm">10%</span>
-                <span className="text-[11px] text-gray-500 whitespace-nowrap">5 Total Patients</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-end pb-4 pt-4">
-            <div className="flex h-36 items-end gap-[4px] sm:gap-[6px] justify-between px-2">
-              {/* Generate 50 vertical bars (25 of type1, 12 of type2, 8 of type3, 5 of type4) */}
-              {Array.from({length: 50}).map((_, i) => {
-                let colorClass = "bg-primary";
-                if (i >= 25 && i < 37) colorClass = "bg-primary/60";
-                else if (i >= 37 && i < 45) colorClass = "bg-primary/30";
-                else if (i >= 45) colorClass = "bg-primary-light";
-                
-                // Random height for dramatic effect between 70% and 100%
-                const height = 60 + Math.random() * 40;
-                
-                return (
-                  <div key={i} className={`flex-1 rounded-t-sm w-1.5 ${colorClass}`} style={{height: `${height}%`}}></div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Appointments List View */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-2">
@@ -262,12 +175,20 @@ const Appointments = () => {
               </tr>
             </thead>
             <tbody className="text-sm">
-              {appointments.map((app) => (
-                <tr key={app.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="p-8 text-center text-gray-500 font-medium">Loading appointments...</td>
+                </tr>
+              ) : appointments.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="p-8 text-center text-gray-500 font-medium">No appointments found.</td>
+                </tr>
+              ) : appointments.map((app) => (
+                <tr key={app._id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
                   <td className="p-4 pl-6"><input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4" /></td>
                   <td className="p-4 py-3 min-w-[200px]">
                     <div className="flex items-center gap-3">
-                      <img src={app.avatar} alt={app.name} className="w-9 h-9 rounded-full object-cover" />
+                      <img src={app.avatar || 'https://i.pravatar.cc/150?u=12'} alt={app.name} className="w-9 h-9 rounded-full object-cover" />
                       <div>
                         <div className="font-semibold text-gray-900 leading-tight">{app.name}</div>
                         <div className="text-[12px] text-gray-500 mt-0.5">{app.code}</div>
@@ -277,13 +198,13 @@ const Appointments = () => {
                   <td className="p-4 py-3 text-gray-600 font-medium whitespace-nowrap">{app.phone}</td>
                   <td className="p-4 py-3 min-w-[180px]">
                     <div className="font-semibold text-gray-900 leading-tight">{app.doctor}</div>
-                    <div className="text-[12px] text-gray-500 mt-0.5">{app.specialty}</div>
+                    <div className="text-[12px] text-gray-500 mt-0.5">{app.specialty || 'General'}</div>
                   </td>
                   <td className="p-4 py-3 font-medium text-gray-700">{app.type}</td>
                   <td className="p-4 py-3 w-[200px]">
                     <div className="flex items-center gap-2 text-gray-600 font-medium">
                       <FileText size={16} className="text-gray-400 flex-shrink-0" />
-                      <span className="truncate max-w-[160px]">{app.notes}</span>
+                      <span className="truncate max-w-[160px]">{app.notes || 'No notes'}</span>
                     </div>
                   </td>
                   <td className="p-4 py-3 whitespace-nowrap">
@@ -291,7 +212,23 @@ const Appointments = () => {
                     <div className="text-[12px] text-gray-500 mt-0.5">{app.time}</div>
                   </td>
                   <td className="p-4 py-3 whitespace-nowrap pr-6">
-                    {renderStatusBadge(app.status)}
+                    <select
+                      value={app.status}
+                      onChange={(e) => openConfirmStatusModal(app._id, e.target.value)}
+                      className="px-3 py-1 rounded-full text-xs font-semibold focus:outline-none cursor-pointer border"
+                      style={{
+                        backgroundColor: app.status === 'Completed' ? 'rgba(153,33,32,0.1)' : app.status === 'Ongoing' ? '#992120' : app.status === 'Scheduled' ? '#EFF6FF' : '#FEF2F2',
+                        color: app.status === 'Completed' ? '#992120' : app.status === 'Ongoing' ? '#FFFFFF' : app.status === 'Scheduled' ? '#3B82F6' : '#EF4444',
+                        borderColor: app.status === 'Completed' ? 'rgba(153,33,32,0.1)' : app.status === 'Ongoing' ? '#992120' : app.status === 'Scheduled' ? '#DBEAFE' : '#FEE2E2',
+                        appearance: 'none',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Ongoing">Ongoing</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Canceled">Canceled</option>
+                    </select>
                   </td>
                 </tr>
               ))}
@@ -299,6 +236,42 @@ const Appointments = () => {
           </table>
         </div>
       </div>
+
+      {/* Tailwind Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform transition-all scale-100">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Change Status</h3>
+            <p className="text-sm text-gray-500 mb-6 font-medium">
+              Are you sure you want to change the status to <span className="font-bold text-primary">{confirmModal.newStatus}</span>? This action will save immediately.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmModal({ isOpen: false, id: null, newStatus: null, isLoading: false })}
+                disabled={confirmModal.isLoading}
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStatusChange}
+                disabled={confirmModal.isLoading}
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-colors disabled:opacity-50 flex items-center gap-2"
+                style={{ backgroundColor: '#992120' }}
+              >
+                {confirmModal.isLoading ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Yes, Change it'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

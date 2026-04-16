@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef ,useEffect  } from 'react';
 import { X, Calendar, ChevronDown, Upload, FileText, Image, Trash2, Plus, Minus, Pencil } from 'lucide-react';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -17,34 +17,84 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
   const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
-    fullName: 'Dr. Elena Morales',
-    gender: 'Female',
-    dob: '1985-10-17',
-    doctorId: 'DR-1025',
-    about: 'Dr. Elena is a board-certified endocrinologist with a focus on diabetes and thyroid disorders, known for her clear explanations and patient-centered treatment plans.',
+    fullName: '',
+    gender: 'Male',
+    dob: '',
+    doctorId: '',
+    about: '',
     phone: '',
-    email: 'elena.morales@medlinkhospital.com',
-    address: 'Jl. Harmoni Raya No. 22, Jakarta, Indonesia',
-    emergencyName: 'Miguel Morales',
-    emergencyPhone: '+62 613-7700-1190',
-    department: 'Endocrinology',
-    specialization: 'Diabetes & Metabolic Disorders',
+    email: '',
+    address: '',
+    emergencyName: '',
+    emergencyPhone: '',
+    department: 'General Medicine',
+    specialization: '',
     workType: 'Full Time',
-    startDate: '2035-04-01',
-    salary: 'IDR 38,000,000',
-    licenseNumber: 'IND-MED-EN-453921',
-    licenseExpiry: '2040-09-30',
+    startDate: '',
+    salary: '',
+    licenseNumber: '',
+    licenseExpiry: '',
   });
 
   const [schedule, setSchedule] = useState(defaultSchedule);
   const [minAppt, setMinAppt] = useState(1);
   const [maxAppt, setMaxAppt] = useState(18);
-  const [uploadedFiles, setUploadedFiles] = useState([
-    { name: 'Medical_License_ElenaMorales.pdf', type: 'pdf' },
-    { name: 'Board_Cert_Endocrinology_ElenaMorales.jpg', type: 'img' },
-  ]);
-  const [phoneError, setPhoneError] = useState(true);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [phoneError, setPhoneError] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [depts, setDepts] = useState([]);
+  const [specs, setSpecs] = useState([]);
+
+  const fetchData = async () => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
+    console.log("Fetching professional info from:", apiBase);
+    
+    if (!apiBase) {
+      console.error("VITE_API_BASE_URL is undefined! Please restart your npm run dev server.");
+      return;
+    }
+
+    try {
+      const [deptRes, specRes] = await Promise.all([
+        fetch(`${apiBase}/department`),
+        fetch(`${apiBase}/speciality`)
+      ]);
+      
+      if (!deptRes.ok || !specRes.ok) {
+         console.error("Fetch failed:", deptRes.status, specRes.status);
+         const text = await (deptRes.ok ? specRes.text() : deptRes.text());
+         console.error("Response text (first 100 chars):", text.substring(0, 100));
+         return;
+      }
+
+      const [deptData, specData] = await Promise.all([deptRes.json(), specRes.json()]);
+      if (deptData.success) setDepts(deptData.data);
+      if (specData.success) setSpecs(specData.data);
+    } catch (error) {
+       console.error("Error fetching professional info lists:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchData();
+    }
+  }, [isOpen]);
+
+  const [avatarPreview, setAvatarPreview] = useState('https://via.placeholder.com/300?text=Doctor');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const avatarInputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleAvatarChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      const render = new FileReader();
+      render.onload = (e) => setAvatarPreview(e.target.result);
+      render.readAsDataURL(file);
+    }
+  };
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -59,26 +109,65 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
     setSchedule(prev => ({ ...prev, [day]: { ...prev[day], [key]: value } }));
   };
 
-  const handleFileDrop = (e) => {
-    e.preventDefault();
-    setDragging(false);
-    const files = Array.from(e.dataTransfer.files);
+  const processFiles = (filesList) => {
+    const files = Array.from(filesList);
     files.forEach(f => {
       const type = f.name.endsWith('.pdf') ? 'pdf' : 'img';
-      setUploadedFiles(prev => [...prev, { name: f.name, type }]);
+      setUploadedFiles(prev => [...prev, { file: f, name: f.name, type }]);
     });
   };
 
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    processFiles(e.dataTransfer.files);
+  };
+
   const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    files.forEach(f => {
-      const type = f.name.endsWith('.pdf') ? 'pdf' : 'img';
-      setUploadedFiles(prev => [...prev, { name: f.name, type }]);
-    });
+    processFiles(e.target.files);
   };
 
   const removeFile = (idx) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.phone.trim()) {
+      setPhoneError(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      Object.keys(form).forEach(key => formData.append(key, form[key]));
+      formData.append('minAppt', minAppt);
+      formData.append('maxAppt', maxAppt);
+      formData.append('schedule', JSON.stringify(schedule));
+      
+      if (avatarFile) formData.append('avatar', avatarFile);
+      uploadedFiles.forEach(f => {
+        if (f.file) formData.append('certifications', f.file);
+      });
+
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/doctor`, {
+        method: 'POST',
+        headers: {
+           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: formData
+      });
+      const data = await res.json();
+      if(data.success) {
+        onClose(); // Parent (Doctors.jsx) will re-fetch
+      } else {
+        alert(data.message || 'Error creating doctor');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -104,10 +193,14 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
             <div className="flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
               {/* Photo Upload */}
               <div className="flex-shrink-0 relative group">
+                <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
                 <div className="w-28 h-32 md:w-24 md:h-28 rounded-2xl overflow-hidden border-2 border-[#992120]/30 bg-[#e7e3da] shadow-inner">
-                  <img src="https://i.pravatar.cc/300?u=elena_morales" alt="Doctor" className="w-full h-full object-cover object-top" />
+                  <img src={avatarPreview} alt="Doctor" className="w-full h-full object-cover object-top" />
                 </div>
-                <button className="absolute -bottom-2 -right-2 w-8 h-8 md:w-6 md:h-6 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-[#992120] hover:bg-[#e7e3da] transition-all hover:scale-110">
+                <button 
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 w-8 h-8 md:w-6 md:h-6 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-[#992120] hover:bg-[#e7e3da] transition-all hover:scale-110"
+                >
                   <Pencil size={12} />
                 </button>
               </div>
@@ -210,31 +303,35 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
             <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-4 border-l-4 border-[#992120] pl-3">Professional Info</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
               {/* Department */}
-              <div className="flex flex-col">
-                <label className="block text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-tighter">Department</label>
-                <div className="relative">
-                  <select value={form.department} onChange={e => handleChange('department', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-[13px] text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120] appearance-none bg-white shadow-sm">
-                    {['Endocrinology', 'Cardiology', 'Neurology', 'Orthopedics', 'Dermatology', 'General Medicine', 'Pediatrics'].map(d => (
-                      <option key={d}>{d}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Department</label>
+                <select
+                  value={form.department}
+                  onChange={e => setForm({ ...form, department: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none transition-all"
+                >
+                  <option value="">Select Department</option>
+                  {depts.map(d => (
+                    <option key={d._id} value={d.name}>{d.name}</option>
+                  ))}
+                  {depts.length === 0 && <option disabled>No departments found</option>}
+                </select>
               </div>
 
               {/* Specialization */}
-              <div className="flex flex-col">
-                <label className="block text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-tighter">Specialization</label>
-                <div className="relative">
-                  <select value={form.specialization} onChange={e => handleChange('specialization', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-[13px] text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#992120]/20 focus:border-[#992120] appearance-none bg-white shadow-sm">
-                    {['Diabetes & Metabolic Disorders', 'Thyroid Disorders', 'Hypertension', 'General Practice'].map(s => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block pl-1">Specialization</label>
+                <select
+                  value={form.specialization}
+                  onChange={e => setForm({ ...form, specialization: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none transition-all"
+                >
+                  <option value="">Select Specialization</option>
+                  {specs.map(s => (
+                    <option key={s._id} value={s.name}>{s.name}</option>
+                  ))}
+                  {specs.length === 0 && <option disabled>No specializations found</option>}
+                </select>
               </div>
 
               {/* Work Type */}
@@ -399,12 +496,14 @@ const AddDoctorModal = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="flex-1 py-2.5 border border-gray-200 rounded-xl text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Save Draft
+            Cancel
           </button>
           <button
-            className="flex-1 py-2.5 bg-[#992120] text-white rounded-xl text-[13px] font-semibold hover:bg-[#7a1a19] transition-colors shadow-sm shadow-[#992120]/30"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex-1 py-2.5 bg-[#992120] text-white rounded-xl text-[13px] font-semibold hover:bg-[#7a1a19] transition-colors shadow-sm shadow-[#992120]/30 disabled:opacity-50"
           >
-            Add Doctor
+            {loading ? 'Adding...' : 'Add Doctor'}
           </button>
         </div>
       </div>

@@ -1,124 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SlidersHorizontal, ChevronDown, Plus,
   MessageCircle, Phone, MoreHorizontal
 } from 'lucide-react';
 import AddDoctorModal from './AddDoctorModal';
 
-// ── Doctor Data ───────────────────────────────────────────────────────────────
-const doctorsData = [
-  {
-    id: 1,
-    name: 'Dr. Amelia Hart',
-    specialty: 'Cardiology',
-    schedule: 'Monday – Friday (08:00 – 14:00)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=amelia_hart_doc',
-    category: 'Cardiology',
-  },
-  {
-    id: 2,
-    name: 'Dr. Rizky Pratama',
-    specialty: 'General Medicine',
-    schedule: 'Monday – Saturday (09:00 – 17:00)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=rizky_pratama_doc',
-    category: 'General Medicine',
-  },
-  {
-    id: 3,
-    name: 'Dr. Sophia Liang',
-    specialty: 'Pediatrics',
-    schedule: 'Monday – Friday (10:00 – 18:00)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=sophia_liang_doc',
-    category: 'Pediatrics',
-  },
-  {
-    id: 4,
-    name: 'Dr. Daniel Obeng',
-    specialty: 'Orthopedics',
-    schedule: 'Mon – Thu (08:00 – 12:00) / Sat (09:00 – 13:00)',
-    status: 'Unavailable',
-    avatar: 'https://i.pravatar.cc/300?u=daniel_obeng_doc',
-    category: 'Orthopedics',
-  },
-  {
-    id: 5,
-    name: 'Dr. Nina Alvarez',
-    specialty: 'Dermatology',
-    schedule: 'Tuesday – Saturday (13:00 – 20:00)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=nina_alvarez_doc',
-    category: 'Dermatology',
-    selected: true,
-  },
-  {
-    id: 6,
-    name: 'Dr. Arjun Mehta',
-    specialty: 'Pulmonology',
-    schedule: 'Monday – Friday (08:00 – 16:00)',
-    status: 'Unavailable',
-    avatar: 'https://i.pravatar.cc/300?u=arjun_mehta_doc',
-    category: 'General Medicine',
-  },
-  {
-    id: 7,
-    name: 'Dr. Laila Hassan',
-    specialty: 'Neurology',
-    schedule: 'Monday – Friday (09:00 – 15:00)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=laila_hassan_doc',
-    category: 'Neurology',
-  },
-  {
-    id: 8,
-    name: 'Dr. Marco Silva',
-    specialty: 'Radiology',
-    schedule: 'Monday – Sunday (07:00 – 13:00)',
-    status: 'Unavailable',
-    avatar: 'https://i.pravatar.cc/300?u=marco_silva_doc',
-    category: 'General Medicine',
-  },
-  {
-    id: 9,
-    name: 'Dr. Hana Sato',
-    specialty: 'Obstetrics & Gynecology',
-    schedule: 'Monday – Friday (14:00 – 21:00)',
-    status: 'Unavailable',
-    avatar: 'https://i.pravatar.cc/300?u=hana_sato_doc',
-    category: 'General Medicine',
-  },
-  {
-    id: 10,
-    name: 'Dr. Johan Müller',
-    specialty: 'Oncology',
-    schedule: 'Monday – Friday (08:30 – 16:30)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=johan_muller_doc',
-    category: 'General Medicine',
-  },
-  {
-    id: 11,
-    name: 'Dr. Victor Rossi',
-    specialty: 'Anesthesiology',
-    schedule: 'Rotational (24h On / 48h Off)',
-    status: 'Unavailable',
-    avatar: 'https://i.pravatar.cc/300?u=victor_rossi_doc',
-    category: 'General Medicine',
-  },
-  {
-    id: 12,
-    name: 'Dr. Sarah Ibrahim',
-    specialty: 'Emergency Medicine',
-    schedule: 'Night Shift (19:00 – 07:00)',
-    status: 'Available',
-    avatar: 'https://i.pravatar.cc/300?u=sarah_ibrahim_doc',
-    category: 'General Medicine',
-  },
-];
-
-const tabs = ['All', 'General Medicine', 'Pediatrics', 'Cardiology', 'Orthopedics', 'Dermatology', 'Neurology'];
+// No hardcoded tabs here, they are fetched dynamically
 
 // ── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) =>
@@ -148,7 +35,7 @@ const DoctorCard = ({ doctor, onOpenDetails }) => {
       {/* Card Top: Name + Menu + Status */}
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-bold text-gray-900 text-[14px] leading-tight">{doctor.name}</h4>
+          <h4 className="font-bold text-gray-900 text-[14px] leading-tight">{doctor.fullName}</h4>
           <button className="text-gray-400 hover:text-gray-700 flex-shrink-0 -mt-0.5">
             <MoreHorizontal size={18} />
           </button>
@@ -159,8 +46,8 @@ const DoctorCard = ({ doctor, onOpenDetails }) => {
       {/* Doctor Photo */}
       <div className="flex-1 flex items-end justify-center px-4 pt-2 pb-0 min-h-[180px] bg-gradient-to-b from-gray-50/0 to-gray-50/60 overflow-hidden">
         <img
-          src={doctor.avatar}
-          alt={doctor.name}
+          src={doctor.avatar ? `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${doctor.avatar}` : `https://i.pravatar.cc/300?u=${doctor._id}`}
+          alt={doctor.fullName}
           className="w-full max-w-[180px] h-[200px] object-cover object-top rounded-t-2xl"
           style={{ objectPosition: 'center top' }}
         />
@@ -168,8 +55,10 @@ const DoctorCard = ({ doctor, onOpenDetails }) => {
 
       {/* Specialty + Schedule */}
       <div className="bg-white px-4 pt-3 pb-1 text-center border-t border-gray-50">
-        <p className="font-bold text-gray-900 text-[13px]">{doctor.specialty}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{doctor.schedule}</p>
+        <p className="font-bold text-gray-900 text-[13px]">{doctor.specialization || 'General Medicine'}</p>
+        <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">
+          {doctor.workType || 'Full Time'} • {doctor.department || 'General'}
+        </p>
       </div>
 
       {/* Actions */}
@@ -194,11 +83,38 @@ const DoctorCard = ({ doctor, onOpenDetails }) => {
 const Doctors = ({ onOpenDetails }) => {
   const [activeTab, setActiveTab] = useState('All');
   const [showModal, setShowModal] = useState(false);
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [docRes, deptRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/doctor`),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/department`)
+      ]);
+      const [docData, deptData] = await Promise.all([docRes.json(), deptRes.json()]);
+      
+      if (docData.success) setDoctorsList(docData.data);
+      if (deptData.success) setDepartments(deptData.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const tabs = ['All', ...departments.map(d => d.name)];
 
   const filtered =
     activeTab === 'All'
-      ? doctorsData
-      : doctorsData.filter((d) => d.category === activeTab || d.specialty === activeTab);
+      ? doctorsList
+      : doctorsList.filter((d) => d.department === activeTab || d.specialization === activeTab);
 
   return (
     <div className="px-4 md:px-8 pb-8 max-w-[1600px] mx-auto">
@@ -237,15 +153,21 @@ const Doctors = ({ onOpenDetails }) => {
         </div>
 
         {/* ── Doctor Cards Grid ─────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((doctor) => (
-            <DoctorCard key={doctor.id} doctor={doctor} onOpenDetails={onOpenDetails} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-10 text-gray-400 font-semibold">Loading Doctors...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 font-semibold">No Doctors Found.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {filtered.map((doctor) => (
+              <DoctorCard key={doctor._id} doctor={doctor} onOpenDetails={onOpenDetails} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Add Doctor Modal */}
-      <AddDoctorModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <AddDoctorModal isOpen={showModal} onClose={() => { setShowModal(false); fetchData(); }} />
     </div>
   );
 };

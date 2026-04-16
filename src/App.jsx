@@ -31,6 +31,7 @@ function App() {
   
   // Local state for selected items (can be moved to props or context later)
   const [selectedHospital, setSelectedHospital] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -143,8 +144,8 @@ function App() {
             <Route path="/appointments" element={<Appointments />} />
             <Route path="/patients" element={<Patients onOpenDetails={() => navigate('/patient-details')} />} />
             <Route path="/patient-details" element={<PatientDetails onBack={() => navigate('/patients')} />} />
-            <Route path="/doctors" element={<Doctors onOpenDetails={() => navigate('/doctor-details')} />} />
-            <Route path="/doctor-details" element={<DoctorDetails onBack={() => navigate('/doctors')} />} />
+            <Route path="/doctors" element={<Doctors onOpenDetails={(d) => { setSelectedDoctor(d); navigate('/doctor-details'); }} />} />
+            <Route path="/doctor-details" element={<DoctorDetails onBack={() => navigate('/doctors')} doctor={selectedDoctor} />} />
             <Route path="/hospitals" element={<Hospitals onOpenDetails={(h) => { setSelectedHospital(h); navigate('/hospital-details'); }} />} />
             <Route path="/hospital-details" element={<HospitalDetails onBack={() => navigate('/hospitals')} hospital={selectedHospital} />} />
             <Route path="/depts-services" element={<ManageDepts />} />
