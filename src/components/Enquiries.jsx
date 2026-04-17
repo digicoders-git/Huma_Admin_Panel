@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  CheckCircle2, Clock, ChevronRight, RefreshCw, Square, CheckSquare, X, Loader2
+  CheckCircle2, Clock, ChevronRight, RefreshCw, Square, CheckSquare, X, Loader2 ,Search ,Eye ,Trash2 ,Pencil ,Plus ,Phone
 } from 'lucide-react';
 
 const Enquiries = () => {

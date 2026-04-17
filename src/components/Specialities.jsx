@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  RotateCw, Database, X, ChevronRight, Upload, Loader2
+  RotateCw, Database, X, ChevronRight, Upload, Loader2 ,Plus ,Search ,Pencil ,Trash2 ,Eye
 } from 'lucide-react';
 
 const Specialities = () => {

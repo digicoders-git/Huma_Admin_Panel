@@ -16,6 +16,10 @@ import {
   BookOpen,
   User
 } from 'lucide-react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
+
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -298,7 +302,8 @@ const Blogs = () => {
       {/* ── FORM MODAL ───────────────────────────────────────────────────── */}
       {isFormModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh]">
+
              <div className="bg-primary p-5 text-white flex justify-between items-center shrink-0">
                 <div>
                   <h3 className="text-lg font-bold">{editingItem ? 'Edit' : 'Create'} Blog Article</h3>
@@ -394,18 +399,33 @@ const Blogs = () => {
                         />
                     </div>
 
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-between ml-1 mb-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Article Body (Supports HTML) *</label>
-                          <span className="text-[9px] text-gray-400 font-medium">Use &lt;h3&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;strong&gt; for styling</span>
+                        <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
+                          <ReactQuill 
+                            theme="snow"
+                            value={formData.content}
+                            onChange={(content) => setFormData({ ...formData, content })}
+                            modules={{
+                              toolbar: [
+                                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                                [{ 'font': [] }],
+                                [{ 'size': ['small', false, 'large', 'huge'] }],
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'color': [] }, { 'background': [] }],
+                                [{ 'script': 'sub' }, { 'script': 'super' }],
+                                ['blockquote', 'code-block'],
+                                [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
+                                [{ 'direction': 'rtl' }, { 'align': [] }],
+                                ['link', 'image', 'video'],
+                                ['clean']
+                              ],
+                            }}
+                            className="h-80"
+                          />
                         </div>
-                        <textarea 
-                          required value={formData.content}
-                          onChange={(e) => setFormData({...formData, content: e.target.value})}
-                          placeholder="Write your main article content here. You can use HTML tags for better formatting."
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/10 outline-none resize-none h-60 font-mono" 
-                        />
-                    </div>
+                        <div className="h-20"></div> {/* Increased spacer for full toolbar dropdowns */}
+
+
+
                   </div>
                 </div>
 
@@ -458,7 +478,28 @@ const Blogs = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Quill custom styling */
+        .ql-toolbar.ql-snow {
+          border: none !important;
+          border-bottom: 1px solid #f3f4f6 !important;
+          background: #fdfdfd;
+          padding: 12px !important;
+        }
+        .ql-container.ql-snow {
+          border: none !important;
+          font-family: inherit !important;
+          font-size: 14px !important;
+        }
+        .ql-editor {
+          min-height: 250px;
+        }
+        .ql-editor.ql-blank::before {
+          color: #9ca3af !important;
+          font-style: normal !important;
+        }
       ` }} />
+
 
     </div>
   );
