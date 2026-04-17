@@ -113,6 +113,8 @@ const Testimonials = () => {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setDeleteConfirm({ show: false, id: null });
     }
   };
 
@@ -316,9 +318,10 @@ const Testimonials = () => {
                 </div>
 
                 <div className="flex gap-4 pt-2">
-                   <button type="submit" disabled={submitting} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50">
-                     {submitting ? 'Saving...' : 'Save Testimonial'}
-                   </button>
+                    <button type="submit" disabled={submitting} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {submitting && <Loader2 size={16} className="animate-spin" />}
+                      {submitting ? 'Saving...' : 'Save Testimonial'}
+                    </button>
                    <button type="button" onClick={closeFormModal} className="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-200">Cancel</button>
                 </div>
              </form>

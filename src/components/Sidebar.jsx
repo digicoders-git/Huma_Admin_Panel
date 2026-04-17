@@ -15,7 +15,8 @@ import {
   LogOut,
   X,
   MessageCircle,
-  AlertCircle
+  AlertCircle,
+  Megaphone
 } from 'lucide-react';
 
 const Sidebar = ({ mobileMenuOpen, setMobileMenuOpen, activeTab, setActiveTab, onLogout }) => {
@@ -25,12 +26,14 @@ const Sidebar = ({ mobileMenuOpen, setMobileMenuOpen, activeTab, setActiveTab, o
     { name: 'Dashboard', icon: LayoutDashboard },
     { name: 'Appointments', icon: CalendarCheck },
     { name: 'Doctors', icon: Stethoscope },
+    { name: 'Departments', icon: Building2 },
     { name: 'Specialities', icon: Brain },
     { name: 'Enquiries', icon: ClipboardList },
     { name: 'Manage Content', icon: Globe },
     { name: 'Gallery', icon: ImageIcon },
     { name: 'Testimonials', icon: Star },
-    { name: 'News', icon: Newspaper },
+    { name: 'Blogs', icon: Newspaper },
+    { name: 'Announcements', icon: Megaphone },
     { name: 'Change Password', icon: Lock },
   ];
 

@@ -106,7 +106,11 @@ const DoctorDetails = ({ onBack }) => {
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] text-gray-400 font-bold uppercase">Exp.</p>
-                  <p className="text-[11px] font-bold text-gray-800 mt-1">10+ Years</p>
+                  <p className="text-[11px] font-bold text-gray-800 mt-1">
+                    {doctor.experience 
+                      ? `${doctor.experience} Years` 
+                      : (doctor.startDate ? `${Math.max(1, new Date().getFullYear() - new Date(doctor.startDate).getFullYear())} Years` : '10+ Years')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -145,8 +149,10 @@ const DoctorDetails = ({ onBack }) => {
               {doctor.about || 'Biography details are currently being updated for this medical professional.'}
             </p>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-gray-50">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-50">
               {[
+                { label: 'Designation', value: doctor.designation || 'N/A' },
+                { label: 'Qualification', value: doctor.qualification || 'N/A' },
                 { label: 'Department', value: doctor.department || 'N/A' },
                 { label: 'Specialty',  value: doctor.specialization || 'N/A' },
                 { label: 'License ID', value: doctor.licenseNumber || 'N/A' },

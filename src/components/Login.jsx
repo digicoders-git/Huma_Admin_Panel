@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const Login = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +30,8 @@ const Login = ({ onLogin }) => {
         setError(data.message || 'Login failed. Please check credentials.');
       }
     } catch (err) {
-      setError('An error occurred while connecting to the server.');
+      console.error('Login error:', err);
+      setError(`Connection Error: ${err.message || 'Could not connect to server'}. Please ensure the backend is running at ${import.meta.env.VITE_API_BASE_URL}`);
     } finally {
       setLoading(false);
     }
@@ -169,7 +170,12 @@ const Login = ({ onLogin }) => {
               onMouseEnter={e => !loading && (e.target.style.backgroundColor = '#7a1a19')}
               onMouseLeave={e => !loading && (e.target.style.backgroundColor = '#992120')}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin" size={20} />
+                  <span>Logging in...</span>
+                </div>
+              ) : 'Login'}
             </button>
           </form>
         </div>

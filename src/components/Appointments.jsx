@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, ShieldCheck, Clock, XSquare, 
   ChevronDown, MoreHorizontal, ArrowUpRight, ArrowDownRight, RefreshCw,
-  Search, CheckCircle2, SlidersHorizontal, Trash2, Eye, User, Phone, MapPin, Calendar, Info
+  Search, CheckCircle2, SlidersHorizontal, Trash2, Eye, User, Phone, MapPin, Calendar, Info,
+  UserPlus, Check, Loader2
 } from 'lucide-react';
 
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Selection & Search States
@@ -15,8 +17,9 @@ const Appointments = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  // Detail Modal State
+  // Detail & Assign Modal States
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [assignModal, setAssignModal] = useState({ isOpen: false, appointment: null, isLoading: false });
 
   const fetchAppointments = async () => {
     try {
@@ -33,8 +36,21 @@ const Appointments = () => {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/doctor`);
+      const data = await res.json();
+      if (data.success) {
+        setDoctors(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+    }
+  };
+
   useEffect(() => {
     fetchAppointments();
+    fetchDoctors();
   }, []);
 
   const [confirmModal, setConfirmModal] = useState({ 
@@ -111,6 +127,36 @@ const Appointments = () => {
     }
   };
 
+  const handleAssignDoctor = async (doctorId, doctorName) => {
+    const { appointment } = assignModal;
+    setAssignModal(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/appointment/${appointment._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          doctor: doctorName,
+          fees: doctors.find(d => d.fullName === doctorName)?.consultationFee || 500,
+          status: 'Scheduled' // Automatically move to Scheduled when assigned
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppointments(prev => prev.map(app => 
+          app._id === appointment._id 
+            ? { ...app, doctor: doctorName, fees: doctors.find(d => d.fullName === doctorName)?.consultationFee || 500, status: 'Scheduled' } 
+            : app
+        ));
+        setAssignModal({ isOpen: false, appointment: null, isLoading: false });
+      }
+    } catch (error) {
+      console.error("Error assigning doctor:", error);
+    } finally {
+      setAssignModal(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
   // Selection Logic
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -126,15 +172,26 @@ const Appointments = () => {
   };
 
   const filteredAppointments = appointments.filter(app => {
-    const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          app.phone.includes(searchQuery) ||
-                          (app.doctor && app.doctor.toLowerCase().includes(searchQuery.toLowerCase()));
+    const nameMatch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const phoneMatch = app.phone.includes(searchQuery);
+    const doctorMatch = app.doctor && app.doctor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = nameMatch || phoneMatch || doctorMatch;
     const matchesStatus = statusFilter === 'All' || app.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
+  const getFilteredDoctors = (dept) => {
+    if (!dept) return doctors;
+    // Normalized comparison
+    return doctors.filter(d => 
+      d.department?.toLowerCase().includes(dept.toLowerCase()) || 
+      dept.toLowerCase().includes(d.department?.toLowerCase())
+    );
+  };
+
   const statCards = [
     { title: "Total Appointments", value: appointments.length, icon: FileText, color: "text-primary" },
+    { title: "Pending", value: appointments.filter(a => a.status === 'Pending').length, icon: Info, color: "text-blue-400" },
     { title: "Completed", value: appointments.filter(a => a.status === 'Completed').length, icon: ShieldCheck, color: "text-green-600" },
     { title: "Ongoing", value: appointments.filter(a => a.status === 'Ongoing').length, icon: Clock, color: "text-orange-500" },
     { title: "Canceled", value: appointments.filter(a => a.status === 'Canceled').length, icon: XSquare, color: "text-red-500" },
@@ -182,6 +239,7 @@ const Appointments = () => {
                 className="bg-transparent text-[12px] font-bold text-primary outline-none cursor-pointer"
               >
                 <option value="" disabled>Bulk Action</option>
+                <option value="Pending">Mark Pending</option>
                 <option value="Scheduled">Mark Scheduled</option>
                 <option value="Ongoing">Mark Ongoing</option>
                 <option value="Completed">Mark Completed</option>
@@ -208,7 +266,7 @@ const Appointments = () => {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)}></div>
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-20">
-                  {['All', 'Scheduled', 'Ongoing', 'Completed', 'Canceled'].map(f => (
+                  {['All', 'Pending', 'Scheduled', 'Ongoing', 'Completed', 'Canceled'].map(f => (
                     <button 
                       key={f}
                       onClick={() => { setStatusFilter(f); setShowFilterDropdown(false); }}
@@ -240,7 +298,7 @@ const Appointments = () => {
                 </th>
                 <th className="p-4 py-4">Patient Details</th>
                 <th className="p-4 py-4">Phone</th>
-                <th className="p-4 py-4">Doctor</th>
+                <th className="p-4 py-4">Assigned Doctor</th>
                 <th className="p-4 py-4">Scheduled Date</th>
                 <th className="p-4 py-4 text-center">Status</th>
                 <th className="p-4 py-4 text-right pr-6">Actions</th>
@@ -264,7 +322,7 @@ const Appointments = () => {
                   <td className="p-4 py-4 min-w-[220px]">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center font-black text-primary text-[11px] border border-primary/10">
-                        {app.name[0]}
+                        {app?.name?.[0] || 'P'}
                       </div>
                       <div>
                         <div className="font-bold text-gray-900 leading-tight">{app.name}</div>
@@ -273,9 +331,22 @@ const Appointments = () => {
                     </div>
                   </td>
                   <td className="p-4 py-4 text-gray-600 font-bold text-[13px]">{app.phone}</td>
-                  <td className="p-4 py-4 min-w-[180px]">
-                    <div className="font-bold text-gray-900 leading-tight flex items-center gap-1.5 truncate">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/30"></span> {app.doctor}
+                  <td className="p-4 py-4 min-w-[220px]">
+                    <div className="flex items-center justify-between group">
+                      <div>
+                        <div className="font-bold text-gray-900 leading-tight flex items-center gap-1.5 truncate">
+                          <span className={`w-1.5 h-1.5 rounded-full ${app.doctor ? 'bg-green-500' : 'bg-orange-400'}`}></span> 
+                          {app.doctor || <span className="text-orange-500 italic font-medium">Pending Assignment</span>}
+                        </div>
+                        {app.department && <div className="text-[10px] text-gray-400 font-bold mt-1 uppercase italic tracking-tighter">Dept: {app.department}</div>}
+                      </div>
+                      <button 
+                        onClick={() => setAssignModal({ isOpen: true, appointment: app, isLoading: false })}
+                        className="p-2 text-primary bg-primary/5 hover:bg-primary hover:text-white rounded-lg transition-all border border-primary/10 shadow-sm"
+                        title="Assign Doctor"
+                      >
+                        <UserPlus size={14} />
+                      </button>
                     </div>
                   </td>
                   <td className="p-4 py-4">
@@ -288,11 +359,12 @@ const Appointments = () => {
                       onChange={(e) => openStatusModal(app._id, e.target.value)}
                       className="px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer border shadow-sm transition-all"
                       style={{
-                        backgroundColor: app.status === 'Completed' ? '#F0FDF4' : app.status === 'Ongoing' ? '#992120' : app.status === 'Scheduled' ? '#EFF6FF' : '#FEF2F2',
-                        color: app.status === 'Completed' ? '#166534' : app.status === 'Ongoing' ? '#FFFFFF' : app.status === 'Scheduled' ? '#1E40AF' : '#991B1B',
-                        borderColor: app.status === 'Completed' ? '#DCFCE7' : app.status === 'Ongoing' ? '#992120' : app.status === 'Scheduled' ? '#DBEAFE' : '#FEE2E2',
+                        backgroundColor: app.status === 'Completed' ? '#F0FDF4' : app.status === 'Ongoing' ? '#992120' : app.status === 'Scheduled' ? '#EFF6FF' : app.status === 'Pending' ? '#FFFBEB' : '#FEF2F2',
+                        color: app.status === 'Completed' ? '#166534' : app.status === 'Ongoing' ? '#FFFFFF' : app.status === 'Scheduled' ? '#1E40AF' : app.status === 'Pending' ? '#92400E' : '#991B1B',
+                        borderColor: app.status === 'Completed' ? '#DCFCE7' : app.status === 'Ongoing' ? '#992120' : app.status === 'Scheduled' ? '#DBEAFE' : app.status === 'Pending' ? '#FEF3C7' : '#FEE2E2',
                       }}
                     >
+                      <option value="Pending">Pending</option>
                       <option value="Scheduled">Scheduled</option>
                       <option value="Ongoing">Ongoing</option>
                       <option value="Completed">Completed</option>
@@ -320,6 +392,69 @@ const Appointments = () => {
         </div>
       </div>
 
+      {/* Doctor Assignment Modal */}
+      {assignModal.isOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="bg-primary p-6 text-white text-center relative">
+                 <button onClick={() => setAssignModal({ isOpen: false, appointment: null, isLoading: false })} className="absolute top-4 right-4 p-1.5 hover:bg-white/10 rounded-full transition-all"><XSquare size={20} /></button>
+                 <UserPlus size={40} className="mx-auto mb-3 opacity-30" />
+                 <h3 className="text-xl font-black uppercase italic italic">Assign Specialist</h3>
+                 <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest mt-1">Select a doctor for {assignModal.appointment?.name}</p>
+              </div>
+              
+              <div className="p-6">
+                 <div className="mb-4 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Available Doctors in {assignModal.appointment?.department || 'all departments'}</p>
+                    <div className="bg-primary-light px-2 py-0.5 rounded-full text-[9px] font-black text-primary uppercase">Dept: {assignModal.appointment?.department || 'Any'}</div>
+                 </div>
+                 
+                 <div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
+                    {getFilteredDoctors(assignModal.appointment?.department).length === 0 ? (
+                      <div className="py-10 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                         <p className="text-xs font-bold text-gray-400 uppercase">No doctors found for this department.</p>
+                      </div>
+                    ) : (
+                      getFilteredDoctors(assignModal.appointment?.department).map((doc) => (
+                        <button 
+                          key={doc._id}
+                          onClick={() => handleAssignDoctor(doc._id, doc.fullName)}
+                          disabled={assignModal.isLoading}
+                          className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-md transition-all group"
+                        >
+                          <div className="flex items-center gap-3 text-left">
+                             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-primary font-black text-[13px] border border-gray-100 group-hover:bg-primary-light group-hover:border-primary/20 transition-all">
+                                {doc?.fullName?.[0] || 'D'}
+                             </div>
+                             <div>
+                                <p className="text-[13px] font-black text-gray-900 leading-none">{doc?.fullName}</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">{doc?.specialization || doc?.department}</p>
+                             </div>
+                          </div>
+                          {assignModal.isLoading ? (
+                            <Loader2 size={16} className="animate-spin text-primary" />
+                          ) : assignModal.appointment?.doctor === doc?.fullName ? (
+                            <Check className="text-green-500" size={18} />
+                          ) : (
+                            <ArrowUpRight className="text-gray-300 group-hover:text-primary transition-colors translate-x-1 group-hover:translate-x-0" size={18} />
+                          )}
+                        </button>
+                      ))
+                    )}
+                 </div>
+              </div>
+              <div className="p-6 bg-gray-50 border-t border-gray-100">
+                 <button 
+                  onClick={() => setAssignModal({ isOpen: false, appointment: null, isLoading: false })}
+                  className="w-full py-3 bg-white text-gray-400 border border-gray-100 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-100 transition-all"
+                 >
+                    Close & Keep Previous
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
       {/* Appointment Detail Modal */}
       {selectedAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
@@ -333,7 +468,7 @@ const Appointments = () => {
               </button>
               <div className="flex items-center gap-5">
                 <div className="w-20 h-20 rounded-[2rem] bg-white text-primary flex items-center justify-center text-3xl font-black shadow-xl">
-                  {selectedAppointment.name[0]}
+                  {selectedAppointment?.name?.[0] || 'P'}
                 </div>
                 <div>
                   <h3 className="text-2xl font-black">{selectedAppointment.name}</h3>
@@ -361,10 +496,18 @@ const Appointments = () => {
                   <p className="text-[14px] font-bold text-gray-800">{selectedAppointment.date} at {selectedAppointment.time}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <span className="text-primary font-black">DR.</span> Assigned Specialist
-                  </p>
-                  <p className="text-[14px] font-bold text-gray-800">{selectedAppointment.doctor}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                      <span className="text-primary font-black">DR.</span> Assigned Specialist
+                    </p>
+                    <button 
+                      onClick={() => setAssignModal({ isOpen: true, appointment: selectedAppointment, isLoading: false })}
+                      className="text-[9px] font-black text-primary uppercase hover:underline"
+                    >
+                      Change Doctor
+                    </button>
+                  </div>
+                  <p className="text-[14px] font-bold text-gray-800">{selectedAppointment.doctor || 'Not Assigned Yet'}</p>
                 </div>
               </div>
 
@@ -437,6 +580,12 @@ const Appointments = () => {
           </div>
         </div>
       )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #fdfdfd; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+      ` }} />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Building2, MapPin, Phone, Star, Bed, Layers, Users } from 'lucide-react';
+import { X, Upload, Building2, MapPin, Phone, Star, Bed, Layers, Users, Loader2 } from 'lucide-react';
 
 const AddHospitalModal = ({ isOpen, onClose, editData }) => {
   const [formData, setFormData] = useState({
@@ -164,8 +164,9 @@ const AddHospitalModal = ({ isOpen, onClose, editData }) => {
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary/30 hover:opacity-90 transition-all transform active:scale-95 disabled:opacity-50"
+                  className="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary/30 hover:opacity-90 transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={16} className="animate-spin" />}
                   {loading ? 'Saving Changes...' : (editData ? 'Update Record' : 'Register Hospital')}
                 </button>
                 <button 

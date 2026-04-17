@@ -1,5 +1,5 @@
 import React, { useState, useRef ,useEffect  } from 'react';
-import { X, Calendar, ChevronDown, Upload, FileText, Image, Trash2, Plus, Minus, Pencil } from 'lucide-react';
+import { X, Calendar, ChevronDown, Upload, FileText, Image, Trash2, Plus, Minus, Pencil, Loader2 } from 'lucide-react';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -25,15 +25,22 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
     phone: '',
     email: '',
     address: '',
+    city: 'Lucknow',
     emergencyName: '',
     emergencyPhone: '',
     department: 'General Medicine',
+    designation: 'Senior Consultant',
+    qualification: 'MBBS, MD',
     specialization: '',
+    expertise: '',
+    procedures: '',
+    whyChoose: '',
     workType: 'Full Time',
     startDate: '',
     salary: '',
     licenseNumber: '',
     licenseExpiry: '',
+    consultationFee: 500,
   });
 
   const [schedule, setSchedule] = useState(defaultSchedule);
@@ -88,15 +95,22 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
           phone: editData.phone || '',
           email: editData.email || '',
           address: editData.address || '',
+          city: editData.city || 'Lucknow',
           emergencyName: editData.emergencyName || '',
           emergencyPhone: editData.emergencyPhone || '',
           department: editData.department || '',
+          designation: editData.designation || 'Senior Consultant',
+          qualification: editData.qualification || 'MBBS, MD',
           specialization: editData.specialization || '',
+          expertise: Array.isArray(editData.expertise) ? editData.expertise.join(', ') : (editData.expertise || ''),
+          procedures: Array.isArray(editData.procedures) ? editData.procedures.join(', ') : (editData.procedures || ''),
+          whyChoose: Array.isArray(editData.whyChoose) ? editData.whyChoose.join(', ') : (editData.whyChoose || ''),
           workType: editData.workType || 'Full Time',
           startDate: editData.startDate ? editData.startDate.split('T')[0] : '',
           salary: editData.salary || '',
           licenseNumber: editData.licenseNumber || '',
           licenseExpiry: editData.licenseExpiry ? editData.licenseExpiry.split('T')[0] : '',
+          consultationFee: editData.consultationFee || 500,
         });
         if (editData.schedule) {
           try {
@@ -114,10 +128,12 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
       } else {
         // Reset form for addition
         setForm({
-          fullName: '', gender: 'Male', dob: '', doctorId: '', about: '', phone: '', email: '',
-          address: '', emergencyName: '', emergencyPhone: '', department: 'General Medicine',
-          specialization: '', workType: 'Full Time', startDate: '', salary: '',
+          address: '', city: 'Lucknow', emergencyName: '', emergencyPhone: '', department: 'General Medicine',
+          designation: 'Senior Consultant', qualification: 'MBBS, MD',
+          specialization: '', expertise: '', procedures: '', whyChoose: '',
+          workType: 'Full Time', startDate: '', salary: '',
           licenseNumber: '', licenseExpiry: '',
+          consultationFee: 500,
         });
         setSchedule(defaultSchedule);
         setMinAppt(1);
@@ -187,7 +203,14 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
     setLoading(true);
     try {
       const formData = new FormData();
-      Object.keys(form).forEach(key => formData.append(key, form[key]));
+      Object.keys(form).forEach(key => {
+        if (['expertise', 'procedures', 'whyChoose'].includes(key)) {
+          const arr = form[key].split(',').map(s => s.trim()).filter(s => s !== '');
+          arr.forEach(val => formData.append(`${key}[]`, val));
+        } else {
+          formData.append(key, form[key]);
+        }
+      });
       formData.append('minAppt', minAppt);
       formData.append('maxAppt', maxAppt);
       formData.append('schedule', JSON.stringify(schedule));
@@ -398,6 +421,16 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Designation</label>
+                    <input type="text" value={form.designation} onChange={e => handleChange('designation', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" placeholder="e.g. Senior Neurologist" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Qualification</label>
+                    <input type="text" value={form.qualification} onChange={e => handleChange('qualification', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" placeholder="e.g. MBBS, MD" />
+                  </div>
+                  <div>
                     <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Department</label>
                     <select value={form.department} onChange={e => handleChange('department', e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 transition-all">
@@ -414,6 +447,33 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Experience (Years)</label>
+                    <input type="number" value={form.experience} onChange={e => handleChange('experience', e.target.value)} min={0}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" placeholder="e.g. 15" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Join Date (Fallback exp)</label>
+                    <input type="date" value={form.startDate} onChange={e => handleChange('startDate', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" />
+                  </div>
+                  
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Expertise (Comma separated)</label>
+                    <textarea value={form.expertise} onChange={e => handleChange('expertise', e.target.value)} rows={2} placeholder="Stroke, Epilepsy..."
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none resize-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Procedures (Comma separated)</label>
+                    <textarea value={form.procedures} onChange={e => handleChange('procedures', e.target.value)} rows={2} placeholder="EEG, EMG..."
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none resize-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Why Choose (Comma separated)</label>
+                    <textarea value={form.whyChoose} onChange={e => handleChange('whyChoose', e.target.value)} rows={2} placeholder="Reasons..."
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20 outline-none resize-none" />
+                  </div>
+
+                  <div>
                     <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Work Type</label>
                     <div className="flex bg-white p-1 rounded-xl border border-gray-100">
                       {['Full Time', 'Part Time'].map(w => (
@@ -427,6 +487,11 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
                   <div>
                     <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Salary (/mo)</label>
                     <input type="text" value={form.salary} onChange={e => handleChange('salary', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" />
+                  </div>
+                   <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase mb-1 ml-1">Consultation Fee (₹)</label>
+                    <input type="number" value={form.consultationFee} onChange={e => handleChange('consultationFee', e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-[13px] font-semibold focus:ring-2 focus:ring-[#992120]/20" />
                   </div>
                 </div>
@@ -497,8 +562,9 @@ const AddDoctorModal = ({ isOpen, onClose, editData = null }) => {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 py-2.5 bg-[#992120] text-white rounded-xl text-[13px] font-semibold hover:bg-[#7a1a19] transition-colors shadow-sm shadow-[#992120]/30 disabled:opacity-50"
+            className="flex-1 py-2.5 bg-[#992120] text-white rounded-xl text-[13px] font-semibold hover:bg-[#7a1a19] transition-colors shadow-sm shadow-[#992120]/30 disabled:opacity-50 flex items-center justify-center gap-2"
           >
+            {loading && <Loader2 className="animate-spin" size={16} />}
             {loading ? (editData ? 'Updating...' : 'Adding...') : (editData ? 'Update Doctor' : 'Add Doctor')}
           </button>
         </div>

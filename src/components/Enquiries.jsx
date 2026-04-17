@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Search, Trash2, Mail, Phone, Calendar, User, MessageSquare,
-  CheckCircle2, Clock, ChevronRight, RefreshCw, Square, CheckSquare, X
+  CheckCircle2, Clock, ChevronRight, RefreshCw, Square, CheckSquare, X, Loader2
 } from 'lucide-react';
 
 const Enquiries = () => {
@@ -9,6 +8,7 @@ const Enquiries = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
   
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState([]);
@@ -42,6 +42,7 @@ const Enquiries = () => {
 
   const updateStatus = async (id, newStatus) => {
     try {
+      setUpdatingId(id);
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/enquiry/status/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -55,6 +56,8 @@ const Enquiries = () => {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -321,9 +324,30 @@ const Enquiries = () => {
                 {/* Footer Controls */}
                 <div className="pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
                    <div className="flex items-center gap-2 w-full md:w-auto">
-                      <button onClick={() => updateStatus(selectedEnquiry._id, 'pending')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedEnquiry.status === 'pending' ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Pending</button>
-                      <button onClick={() => updateStatus(selectedEnquiry._id, 'contacted')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedEnquiry.status === 'contacted' ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Contacted</button>
-                      <button onClick={() => updateStatus(selectedEnquiry._id, 'resolved')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedEnquiry.status === 'resolved' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Resolved</button>
+                      <button 
+                        disabled={updatingId === selectedEnquiry._id}
+                        onClick={() => updateStatus(selectedEnquiry._id, 'pending')} 
+                        className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedEnquiry.status === 'pending' ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                      >
+                        {updatingId === selectedEnquiry._id && <Loader2 size={12} className="animate-spin" />}
+                        Pending
+                      </button>
+                      <button 
+                        disabled={updatingId === selectedEnquiry._id}
+                        onClick={() => updateStatus(selectedEnquiry._id, 'contacted')} 
+                        className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedEnquiry.status === 'contacted' ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                      >
+                        {updatingId === selectedEnquiry._id && <Loader2 size={12} className="animate-spin" />}
+                        Contacted
+                      </button>
+                      <button 
+                        disabled={updatingId === selectedEnquiry._id}
+                        onClick={() => updateStatus(selectedEnquiry._id, 'resolved')} 
+                        className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedEnquiry.status === 'resolved' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                      >
+                        {updatingId === selectedEnquiry._id && <Loader2 size={12} className="animate-spin" />}
+                        Resolved
+                      </button>
                    </div>
                    <button onClick={() => deleteEnquiry(selectedEnquiry._id)} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-all">
                       <Trash2 size={16} />

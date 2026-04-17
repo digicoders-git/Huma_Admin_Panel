@@ -17,7 +17,8 @@ import Profile from './components/Profile';
 import WebsiteContent from './components/WebsiteContent';
 import Gallery from './components/Gallery';
 import Testimonials from './components/Testimonials';
-import News from './components/News';
+import Blogs from './components/Blogs';
+import Announcements from './components/Announcements';
 import Login from './components/Login';
 import PatientDetails from './components/PatientDetails';
 import DoctorDetails from './components/DoctorDetails';
@@ -75,7 +76,8 @@ function App() {
     if (path === '/manage-content') return 'Manage Content';
     if (path === '/gallery') return 'Hospital Gallery';
     if (path === '/testimonials') return 'Patient Testimonials';
-    if (path === '/news') return 'News & Announcements';
+    if (path === '/blogs') return 'Blog Management';
+    if (path === '/announcements') return 'Ticker Announcements';
     return 'Dashboard';
   };
 
@@ -84,7 +86,7 @@ function App() {
     if (path.includes('patient')) return 'Patients';
     if (path.includes('doctor')) return 'Doctors';
     if (path.includes('hospital')) return 'Hospitals';
-    if (path === '/depts-services') return 'Depts & Services';
+    if (path === '/departments') return 'Departments';
     if (path === '/specialities') return 'Specialities';
     if (path === '/appointments') return 'Appointments';
     if (path === '/enquiries') return 'Enquiries';
@@ -92,7 +94,8 @@ function App() {
     if (path === '/manage-content') return 'Manage Content';
     if (path === '/gallery') return 'Gallery';
     if (path === '/testimonials') return 'Testimonials';
-    if (path === '/news') return 'News';
+    if (path === '/blogs') return 'Blogs';
+    if (path === '/announcements') return 'Announcements';
     if (path === '/change-password') return 'Change Password';
     if (path === '/dashboard') return 'Dashboard';
     return '';
@@ -110,13 +113,15 @@ function App() {
             'Appointments': '/appointments',
             'Patients': '/patients',
             'Doctors': '/doctors',
+            'Departments': '/departments',
             'Specialities': '/specialities',
             'Enquiries': '/enquiries',
             'Messages': '/messages',
             'Manage Content': '/manage-content',
             'Gallery': '/gallery',
             'Testimonials': '/testimonials',
-            'News': '/news',
+            'Blogs': '/blogs',
+            'Announcements': '/announcements',
             'Change Password': '/change-password'
           };
           navigate(routes[tab] || '/dashboard');
@@ -144,7 +149,7 @@ function App() {
             <Route path="/doctor-details/:id" element={<DoctorDetails onBack={() => navigate('/doctors')} />} />
             <Route path="/hospitals" element={<Hospitals onOpenDetails={(h) => navigate(`/hospital-details/${h._id}`)} />} />
             <Route path="/hospital-details/:id" element={<HospitalDetails onBack={() => navigate('/hospitals')} />} />
-            <Route path="/depts-services" element={<ManageDepts />} />
+            <Route path="/departments" element={<ManageDepts />} />
             <Route path="/specialities" element={<Specialities />} />
             <Route path="/enquiries" element={<Enquiries />} />
             <Route path="/messages" element={<Messages />} />
@@ -154,7 +159,8 @@ function App() {
             <Route path="/manage-content" element={<WebsiteContent />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/testimonials" element={<Testimonials />} />
-            <Route path="/news" element={<News />} />
+            <Route path="/blogs" element={<Blogs />} />
+            <Route path="/announcements" element={<Announcements />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
 

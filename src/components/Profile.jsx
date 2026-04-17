@@ -83,7 +83,8 @@ const Profile = () => {
   const getMediaUrl = (url) => {
     if (!url) return null;
     if (url.startsWith('http')) return url;
-    return `${API.replace('/api', '')}${url}`;
+    const base = API.replace('/api', '');
+    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   if (loading || !profile) {

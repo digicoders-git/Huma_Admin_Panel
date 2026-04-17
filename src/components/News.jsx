@@ -329,7 +329,8 @@ const News = () => {
                 </div>
 
                 <div className="flex gap-4 pt-2 shrink-0">
-                   <button type="submit" disabled={submitting} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50">
+                   <button type="submit" disabled={submitting} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
+                     {submitting && <Loader2 size={16} className="animate-spin" />}
                      {submitting ? 'Saving...' : 'Save Article'}
                    </button>
                    <button type="button" onClick={closeFormModal} className="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-200">Cancel</button>
@@ -370,12 +371,11 @@ const News = () => {
         </div>
       )}
 
-      <style jsx>{`
-
+      <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #fdfdfd; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
-      `}</style>
+      ` }} />
 
     </div>
   );

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, Search, Pencil, Trash2, Stethoscope, 
-  RotateCw, Database, X, ChevronRight, Upload
+  RotateCw, Database, X, ChevronRight, Upload, Loader2
 } from 'lucide-react';
 
 const Specialities = () => {
@@ -13,6 +12,7 @@ const Specialities = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [viewDetails, setViewDetails] = useState(null);
   const [editingSpec, setEditingSpec] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null });
 
   const [formData, setFormData] = useState({ 
@@ -47,6 +47,7 @@ const Specialities = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     const url = editingSpec 
       ? `${import.meta.env.VITE_API_BASE_URL}/speciality/${editingSpec._id}` 
       : `${import.meta.env.VITE_API_BASE_URL}/speciality`;
@@ -80,6 +81,8 @@ const Specialities = () => {
     } catch (error) {
       console.error("Error saving speciality:", error);
       alert("Error saving. Please check console.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -132,7 +135,9 @@ const Specialities = () => {
 
   const getMediaUrl = (url) => {
     if (!url) return 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png';
-    return `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${url}`;
+    if (url.startsWith('http')) return url;
+    const base = import.meta.env.VITE_API_BASE_URL.replace('/api', '').replace(/\/$/, '');
+    return `${base}${url}`;
   };
 
   return (
@@ -258,7 +263,10 @@ const Specialities = () => {
                 </div>
 
                 <div className="col-span-full pt-4 flex gap-4">
-                   <button type="submit" className="flex-1 py-3.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:opacity-90 transition-all">Save Speciality</button>
+                   <button type="submit" disabled={submitting} className="flex-1 py-3.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                      {submitting && <Loader2 size={14} className="animate-spin" />}
+                      {submitting ? 'Saving...' : 'Save Speciality'}
+                   </button>
                    <button type="button" onClick={() => setIsFormModalOpen(false)} className="px-8 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-bold text-xs uppercase transition-all">Cancel</button>
                 </div>
              </form>

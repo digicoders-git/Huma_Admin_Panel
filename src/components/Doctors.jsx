@@ -237,15 +237,9 @@ const Doctors = ({ onOpenDetails }) => {
            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                   <h3 className="text-xl font-bold text-gray-900 capitalize">Manage {viewMode}</h3>
+                   <h3 className="text-xl font-bold text-gray-900 capitalize">{viewMode === 'depts' ? 'Departments' : 'Specialities'} List</h3>
                    <p className="text-xs text-gray-400 font-bold mt-1 uppercase tracking-widest">Medical Professional Categories</p>
                 </div>
-                <button 
-                  onClick={() => { setCatFormData({ name: '', description: '' }); setCategoryModal({ isOpen: true, type: viewMode === 'depts' ? 'dept' : 'spec', data: null }); }}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
-                >
-                  <Plus size={16} /> Add New {viewMode === 'depts' ? 'Department' : 'Speciality'}
-                </button>
               </div>
 
               <div className="overflow-x-auto">
@@ -254,8 +248,7 @@ const Doctors = ({ onOpenDetails }) => {
                     <tr className="text-[11px] text-gray-400 font-bold uppercase tracking-[0.2em] border-b border-gray-50">
                       <th className="pb-4 pl-4 w-16">Icon</th>
                       <th className="pb-4">Category Name</th>
-                      <th className="pb-4 hidden md:table-cell">Description</th>
-                      <th className="pb-4 text-right pr-4">Actions</th>
+                      <th className="pb-4 hidden md:table-cell pr-4">Description</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
@@ -270,24 +263,8 @@ const Doctors = ({ onOpenDetails }) => {
                            <div className="font-bold text-gray-900">{item.name}</div>
                            <div className="text-[10px] text-gray-400 font-bold mt-1 uppercase">ID: {item._id.slice(-6)}</div>
                         </td>
-                        <td className="py-5 hidden md:table-cell max-w-[300px]">
-                           <p className="text-gray-500 line-clamp-1">{item.description || 'No description provided.'}</p>
-                        </td>
-                        <td className="py-5 text-right pr-4">
-                           <div className="flex justify-end gap-2">
-                             <button 
-                               onClick={() => { setCatFormData({ name: item.name, description: item.description || '' }); setCategoryModal({ isOpen: true, type: viewMode === 'depts' ? 'dept' : 'spec', data: item }); }}
-                               className="p-2 text-blue-500 bg-blue-50 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-100"
-                             >
-                               <Pencil size={14} />
-                             </button>
-                             <button 
-                               onClick={() => handleDeleteCategory(viewMode === 'depts' ? 'dept' : 'spec', item._id)}
-                               className="p-2 text-red-500 bg-red-50 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-100"
-                             >
-                               <Trash2 size={14} />
-                             </button>
-                           </div>
+                        <td className="py-5 hidden md:table-cell max-w-[300px] pr-4">
+                           <p className="text-gray-500 line-clamp-1">{item.shortDesc || item.description || 'No description provided.'}</p>
                         </td>
                       </tr>
                     ))}
