@@ -65,8 +65,12 @@ const Specialities = () => {
     }
 
     try {
+      const token = localStorage.getItem('adminToken');
       const res = await fetch(url, {
         method: editingSpec ? 'PUT' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: data
       });
       const responseData = await res.json();
@@ -113,12 +117,19 @@ const Specialities = () => {
   const confirmDelete = async () => {
     const { id } = deleteConfirm;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/speciality/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/speciality/${id}`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         fetchSpecialties();
         setDeleteConfirm({ show: false, id: null });
       }
+
     } catch (error) {
       console.error(error);
     }

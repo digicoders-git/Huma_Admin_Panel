@@ -54,8 +54,12 @@ const AddHospitalModal = ({ isOpen, onClose, editData }) => {
       : `${import.meta.env.VITE_API_BASE_URL}/hospital/create`;
 
     try {
+      const token = localStorage.getItem('adminToken');
       const res = await fetch(url, {
         method: editData ? 'PUT' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: data
       });
       if ((await res.json()).success) {

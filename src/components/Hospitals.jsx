@@ -32,11 +32,16 @@ const Hospitals = ({ onOpenDetails }) => {
   useEffect(() => {
     fetchHospitals();
   }, []);
-
   const confirmDelete = async () => {
     const { id } = deleteConfirm;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/hospital/delete/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/hospital/delete/${id}`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         fetchHospitals();
@@ -54,9 +59,13 @@ const Hospitals = ({ onOpenDetails }) => {
 
   const toggleStatus = async (id, currentStatus) => {
     try {
+      const token = localStorage.getItem('adminToken');
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/hospital/status/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ isActive: !currentStatus })
       });
       const data = await res.json();

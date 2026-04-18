@@ -107,7 +107,13 @@ const Doctors = ({ onOpenDetails }) => {
     const { type, id } = deleteConfirm;
     const endpoint = type === 'doctor' ? 'doctor' : (type === 'dept' ? 'department' : 'speciality');
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/${endpoint}/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/${endpoint}/${id}`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         fetchData();
@@ -132,9 +138,13 @@ const Doctors = ({ onOpenDetails }) => {
     const url = isEdit ? `${import.meta.env.VITE_API_BASE_URL}/${endpoint}/${data._id}` : `${import.meta.env.VITE_API_BASE_URL}/${endpoint}`;
     
     try {
+      const token = localStorage.getItem('adminToken');
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(catFormData)
       });
       if ((await res.json()).success) {
